@@ -1,5 +1,4 @@
 import nlp from 'npm:compromise@14.14.0';
-import { stopwords } from "../filters/stopwords.ts";
 import Three from "npm:compromise@14.14.0/view/three";
 
 function identifyTopics(doc: Three) {
@@ -9,6 +8,8 @@ function identifyTopics(doc: Three) {
 
 export function extractWords(text: string): string[] {
     const doc = nlp(text);
-    const topics = identifyTopics(doc).filter((entity: string) => !stopwords.has(entity.toLowerCase()));
+    const topics = identifyTopics(doc).filter((entity: string) => {
+        return !entity.startsWith('#');
+    });
     return [...topics];
 }

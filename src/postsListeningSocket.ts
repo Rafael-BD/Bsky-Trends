@@ -1,14 +1,15 @@
-import { stopwords } from "./filters/stopwords.ts";
-// deno-lint-ignore-file require-await
+import { stopwords_pt } from "./filters/stopwords_pt.ts";
 import {
     ComAtprotoSyncSubscribeRepos,
     SubscribeReposMessage,
     subscribeRepos,
 } from 'npm:atproto-firehose@0.2.2';
 import { extractSentences } from "./processing/sentences.ts";
-import { preProcessText, filterSentences } from "./utils/preProcess.ts";
-import { updateSketches } from "./processing/countMinSketch.ts";
+import { preProcessText } from "./utils/preProcess.ts";
+import { filterSentences, filterWords } from "./filters/filter.ts";
+import { updateSketches, updateGlobalSketch } from "./processing/countMinSketch.ts";
 import { extractWords } from "./processing/words.ts"; // Importando o identificador de entidades
+import { extractHashtags } from "./processing/hashtags.ts";
 
 function createWebSocketClient() {
     function connectToWebSocket() {
@@ -20,30 +21,31 @@ function createWebSocketClient() {
                         if (!op?.payload) return;
                         const payload = op.payload as { $type: string; text?: string; langs?: string[]; createdAt: string; };
                         if (!payload.langs) return;
-                        if (!payload.langs.includes('pt')) return;
                         if (payload.$type !== "app.bsky.feed.post" || !payload.text) return;
-                        // so considera posts das ultimas 6 horas
+
                         const postDate = new Date(payload.createdAt);
                         const currentDate = new Date();
                         const diff = currentDate.getTime() - postDate.getTime();
-                        const diffInHours = diff / (1000 * 60 * 60);
-                        if (diffInHours > 6) return;
+                        const diffInHours = diff / (1000 * 60 * 60); 
+                        if (diffInHours > 12) return;
+
                         const txt = payload.text.trim();
                     
                         const processedText = preProcessText(txt);
+                        const date = new Date(payload.createdAt);
                     
-                        // Ignorar texto composto apenas de stopwords
-                        if (processedText.split(" ").every(word => stopwords.has(word))) return;
-
-                        // Extrair sentenças e filtra por sentenças com no mínimo 2 palavras e no maximo 3
-                        const phrases = filterSentences(extractSentences(processedText));
-
-                        // Extrair n-grams para frases e palavras
-                        // const phrases = sentences.flatMap(sentence => extractNgrams(preprocessText(sentence), 2, 3));
-                        const words = extractWords(processedText);
-                    
-                        // Atualizar os sketches
-                        updateSketches({ words, phrases });
+                        if(payload.langs.includes('pt')){
+                            if (processedText.split(" ").every(word => stopwords_pt.has(word))) return;
+                            const phrases = filterSentences(extractSentences(processedText));
+                            const words = filterWords(extractWords(processedText));
+                            const hashtags = filterWords(extractHashtags(processedText));
+                            updateSketches({ words, phrases, hashtags }, date);
+                        }
+                        if (!payload.langs.includes('pt')){
+                            if (processedText.split(" ").every(word => stopwords_pt.has(word))) return;
+                            const words = extractWords(processedText); 
+                            updateGlobalSketch({ words }, date);
+                        }
                     });
                 }
             })

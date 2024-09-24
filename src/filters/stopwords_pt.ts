@@ -1,5 +1,5 @@
-const stopwords = new Set([
-    "a", "o", "e", "de", "do", "da", "que", "em", "no", "na", "com", "um", "uma", 
+const stopwords_pt = new Set([
+    "de", "do", "da", "que", "em", "no", "na", "com", "um", "uma", 
     "os", "as", "por", "para", "se", "ao", "ele", "ela", "eles", "elas", "eu", 
     "você", "nos", "nós", "vocês", "isso", "mas", "como", "me", 
     "te", "lhe", "minha", "seu", "sua", "tão", "muito", "onde", "sobre", "sob", 
@@ -75,9 +75,19 @@ const stopwords = new Set([
     "trabalho", "treze", "três", "tudo", "têm", "tínhamos", "umas", "uns", "usa", 
     "usar", "vai", "vais", "valor", "veja", "vem", "vens", "ver", "verdade", 
     "verdadeiro", "vez", "vezes", "viagem", "vindo", "vinte", "vários", "vão", 
-    "vêm", "vós", "zero", "área", "és", "último"
+    "vêm", "vós", "zero", "área", "és", "último", "a", "b", "c", "d", "e", "f",
+    "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u",
+    "v", "w", "x", "y", "z", "às", "àquela", "àquelas", "àquele", "àqueles",
+    "caramba", "cima", "coisa", "coisas", "comigo", "conosco", "consigo", "contigo",
+    "mt", "ia", "ir", "iria", "iriam", "iríamos", "isso", "isto", "já", "lado",
+    "lhe", "lhes", "logo", "maioria", "maiorias", "mais", "mas", "me", "mesma",
+    "ola", "oi", "onde", "ontem", "os", "ou", "para", "pela", "pelas", "pelo",
+    "kkk", "linda", "lindo", "eu", "nem", "ou", "ainda", "pois", "que", "como", "quando", "o", "não", "só",
+    "quem", "pra", "sobre", "fui", "foi", "tinha", "foi", "há", "aí", "um", 
+    "estava", "pelo", "essa", "este", "tava", "que", "no", "será", "foi", 
+    "ele", "ele", "ela", "como", "tem", "este", "pelo", "do", "que", "cara"
 ]);
 
-export { stopwords };
+export { stopwords_pt };
 
 

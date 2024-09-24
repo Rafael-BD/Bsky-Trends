@@ -2,9 +2,9 @@ import { Context } from "https://deno.land/x/oak@v13.1.0/mod.ts";
 
 const kv = await Deno.openKv();
 
-const MAX_REQUESTS = 15;      
-const BLOCK_DURATION = 30;    
-const WINDOW_DURATION = 30;   
+const MAX_REQUESTS = 1;      
+const BLOCK_DURATION = 10;    
+const WINDOW_DURATION = 60;   
 
 export default async function rateLimiter(ctx: Context, next: () => Promise<unknown>) {
     const ip = ctx.request.ip || ctx.request.headers.get('x-forwarded-for') || 'unknown';
