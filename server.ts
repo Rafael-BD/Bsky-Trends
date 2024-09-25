@@ -2,6 +2,7 @@ import { Application, Router } from "https://deno.land/x/oak@v13.1.0/mod.ts";
 import { oakCors } from "https://deno.land/x/cors@v1.2.2/mod.ts";
 import {createWebSocketClient} from "./src/postsListeningSocket.ts";
 import { getTrendingTopics } from "./src/utils/getTrends.ts";
+import { RateLimiter } from "https://deno.land/x/oak_rate_limit/mod.ts";
 
 // Configurações do servidor HTTP com Oak
 const app = new Application();
@@ -12,6 +13,7 @@ router.get("/trending", async (ctx) => {
     const trends = await getTrendingTopics();
     ctx.response.body = trends;
 });
+
 
 // Middleware e rotas
 app.use(oakCors({ origin: "*" }));

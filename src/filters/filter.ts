@@ -1,18 +1,13 @@
 import { blacklist } from "./blacklist.ts";
 import { stopwords_pt } from "./stopwords/stopwords_pt.ts";
-import {stopwords_en} from "./stopwords/stopwords_en.ts";
+import { stopwords_en } from "./stopwords/stopwords_en.ts";
 
 const blacklistRegexes = Array.from(blacklist).map(word => {
-    const regexString = word
-        .replace(/^\*/, '.*') 
-        .replace(/\*$/, '.*') 
-        .replace(/\*/g, '.*') 
-        .replace(/\+/g, '.+')
-        .toLowerCase();
+    const regexString = word.replace(/\*/g, '.*').replace(/\+/g, '.+');
     return new RegExp(`^${regexString}$`, 'i');
 });
 
-// Filter sentences to remove sentences that have duplicate words, sentences with less than 2 words or more than 3 words, words that are hashtags, or words in the blacklist
+
 function filterSentences(sentences: string[]): string[] {
     return sentences.filter(sentence => {
         const words = sentence.split(" ");

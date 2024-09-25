@@ -7,6 +7,9 @@ class CountMinSketch {
     private maxDates: number;
     private maxAgeInHours: number;
     private similarityThreshold: number;
+    private cleanInterval: number;
+    private cleanIntervalId: NodeJS.Timeout | null;
+    private minCount: number;
 
     /**
      * 
@@ -15,8 +18,10 @@ class CountMinSketch {
      * @param maxDates Número máximo de datas a serem armazenadas
      * @param maxAgeInHours Idade máxima em horas para manter as entradas
      * @param similarityThreshold Limite de similaridade para agrupar palavras/frases semelhantes
+     * @param cleanInterval Intervalo em milissegundos para limpar entradas antigas
+     * @param minCount Contagem mínima para manter as entradas
      */
-    constructor(depth = 5, width = 1000, maxDates = 5, maxAgeInHours = 24, similarityThreshold = 0.8) {
+    constructor(depth = 5, width = 1000, maxDates = 5, maxAgeInHours = 24, similarityThreshold = 0.8, cleanInterval = 600000, minCount = 10) {  
         this.depth = depth;
         this.width = width;
         this.table = Array.from({ length: depth }, () => Array(width).fill(0));
@@ -25,6 +30,10 @@ class CountMinSketch {
         this.maxDates = maxDates; // Número máximo de datas a serem armazenadas
         this.maxAgeInHours = maxAgeInHours; // Idade máxima em horas para manter as entradas
         this.similarityThreshold = similarityThreshold; // Limite de similaridade para agrupar palavras/frases semelhantes
+        this.cleanInterval = cleanInterval; // Intervalo para limpar entradas antigas
+        this.cleanIntervalId = null;
+        this.minCount = minCount; // Contagem mínima para manter as entradas
+        this.startPeriodicCleaning();
     }
 
     private generateHashFunctions(depth: number, width: number): Array<(str: string) => number> {
@@ -67,7 +76,7 @@ class CountMinSketch {
     }
 
     update(item: string, date: Date) {
-        this.cleanOldEntries(); // Limpa entradas antigas antes de atualizar
+        console.log('Updating item:', item, 'at', date);
         const lowerCaseItem = item.toLowerCase(); // Converter para minúsculas
 
         // Verifica se há uma entrada semelhante existente
@@ -103,7 +112,6 @@ class CountMinSketch {
     }
 
     getTopNgrams(n = 10): Array<{ item: string, count: number }> {
-        this.cleanOldEntries(); // Limpa entradas antigas antes de obter os top n-grams
         const now = new Date();
         // Retorna os n-gramas mais frequentes com base no contador de n-gramas e na média ponderada das datas
         return Array.from(this.ngramsCounter.entries())
@@ -121,9 +129,20 @@ class CountMinSketch {
         const now = new Date();
         for (const [key, value] of this.ngramsCounter.entries()) {
             value.dates = value.dates.filter(date => (now.getTime() - date.getTime()) / (1000 * 60 * 60) <= this.maxAgeInHours);
-            if (value.dates.length === 0) {
+            if (value.dates.length === 0 || value.count < this.minCount) {
                 this.ngramsCounter.delete(key);
             }
+        }
+    }
+
+    private startPeriodicCleaning() {
+        this.cleanIntervalId = setInterval(() => this.cleanOldEntries(), this.cleanInterval) as unknown as NodeJS.Timeout;
+    }
+
+    stopPeriodicCleaning() {
+        if (this.cleanIntervalId) {
+            clearInterval(this.cleanIntervalId);
+            this.cleanIntervalId = null;
         }
     }
 }

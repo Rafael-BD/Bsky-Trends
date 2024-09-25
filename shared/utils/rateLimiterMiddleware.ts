@@ -3,7 +3,7 @@ import { Context } from "https://deno.land/x/oak@v13.1.0/mod.ts";
 const kv = await Deno.openKv();
 
 const MAX_REQUESTS = 1;      
-const BLOCK_DURATION = 10;    
+const BLOCK_DURATION = 60;    
 const WINDOW_DURATION = 60;   
 
 export default async function rateLimiter(ctx: Context, next: () => Promise<unknown>) {

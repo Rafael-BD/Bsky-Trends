@@ -72,8 +72,9 @@ const blacklist = new Set([
     "XIBIU*","XIBUMBA*", "Xixizento*","XOCHOTA*","XOTA*","XOXOTA*","Xupetinha*","Xupisco*","Xurupita*","Xuxexo*",
     "xvideo","ZeBuceta*","Ziguizira*","Zina*","Zoiudo*","Zoneira*","Zulu*","Zureta*","me mata", "se mata", "pintoawards",
     "xerecaawards", "pintosawards", "xerecasawards", "bucetaawards", "bucetasawards", "peito*", "pinto*", "pica*",
-    "peitoawards", "*nuds*", "*pack*", "raba*", "*porn*", "*f+ck*", "*sex", "incel", "gore", "nsfw", "broderagem", "brotheragem",
-    "*nud*", "*novinha*", "*novinho*"
+    "peitoawards", "*nuds*", "*pack*", "raba*", "*porn*", "*f+ck*", "*sex", "incel", "gore", "nsfw", "*broderagem*", "*brotheragem*",
+    "*nud*", "*novinha*", "*novinho*", "vou me matar", "pauduro", "tesao", "pelado", "horny", "hardcock", "fetiche", "tactefilia",
+    "hentai", "anal", "femboy", "cum"
 ]);
 
 
