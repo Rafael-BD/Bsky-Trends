@@ -1,8 +1,14 @@
-import { blacklist_pt } from "./blacklist_pt.ts";
-import { stopwords_pt } from "./stopwords_pt.ts";
+import { blacklist } from "./blacklist.ts";
+import { stopwords_pt } from "./stopwords/stopwords_pt.ts";
+import {stopwords_en} from "./stopwords/stopwords_en.ts";
 
-const blacklistRegexes = Array.from(blacklist_pt).map(word => {
-    const regexString = word.replace(/\*/g, '.*').replace(/\+/g, '.+');
+const blacklistRegexes = Array.from(blacklist).map(word => {
+    const regexString = word
+        .replace(/^\*/, '.*') 
+        .replace(/\*$/, '.*') 
+        .replace(/\*/g, '.*') 
+        .replace(/\+/g, '.+')
+        .toLowerCase();
     return new RegExp(`^${regexString}$`, 'i');
 });
 
@@ -17,11 +23,28 @@ function filterSentences(sentences: string[]): string[] {
     });
 }
 
-function filterWords(words: string[]): string[] {
+function filterWords(words: string[], lang: string): string[] {
     return words.filter(word => {
         const lowerCaseWord = word.toLowerCase().replace(/^#/, '');
         const isBlacklisted = blacklistRegexes.some(regex => regex.test(lowerCaseWord));
-        return !isBlacklisted && !stopwords_pt.has(lowerCaseWord);
+        const hasMoreThanOneChar = lowerCaseWord.length > 1;
+        const isOneWordOnly = lowerCaseWord.split(" ").length === 1;
+
+        let hasStopword = false;
+        switch (lang) {
+            case 'pt':
+                hasStopword = stopwords_pt.has(lowerCaseWord);
+                break;
+            case 'en':
+                hasStopword = stopwords_en.has(lowerCaseWord);
+                break
+            default:
+                hasStopword = stopwords_pt.has(lowerCaseWord) || stopwords_en.has(lowerCaseWord);
+                break;
+        }
+
+        const isValidWord = hasMoreThanOneChar && isOneWordOnly && !hasStopword && !isBlacklisted;
+        return isValidWord;
     });
 }
 

@@ -1,4 +1,4 @@
-import { stopwords_pt } from "./filters/stopwords_pt.ts";
+import { stopwords_pt } from "./filters/stopwords/stopwords_pt.ts";
 import {
     ComAtprotoSyncSubscribeRepos,
     SubscribeReposMessage,
@@ -37,13 +37,13 @@ function createWebSocketClient() {
                         if(payload.langs.includes('pt')){
                             if (processedText.split(" ").every(word => stopwords_pt.has(word))) return;
                             const phrases = filterSentences(extractSentences(processedText));
-                            const words = filterWords(extractWords(processedText));
-                            const hashtags = filterWords(extractHashtags(processedText));
+                            const words = filterWords(extractWords(processedText), 'pt');
+                            const hashtags = filterWords(extractHashtags(processedText), 'pt');
                             updateSketches({ words, phrases, hashtags }, date);
                         }
                         if (!payload.langs.includes('pt')){
                             if (processedText.split(" ").every(word => stopwords_pt.has(word))) return;
-                            const words = extractWords(processedText); 
+                            const words = filterWords(extractWords(processedText), 'global');
                             updateGlobalSketch({ words }, date);
                         }
                     });

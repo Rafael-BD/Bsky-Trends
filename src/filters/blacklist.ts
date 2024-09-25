@@ -1,4 +1,4 @@
-const blacklist_pt = new Set([
+const blacklist = new Set([
     "+GUA*", "AnimaldeTeta*a", "Arrombado", "Arrombado*", "arrombados", "asshole", 
     "avsfd", "BABA-OVO*", "Babaca", "Babaca*", "BABACA*", "BABAOVO*", "BACURA*", 
     "BAGOS*", "Baitola*", "BAITOLA*", "BEBUM*", "Benfiquista*", "Biba*", "Bicha", 
@@ -31,16 +31,13 @@ const blacklist_pt = new Set([
     "GONORREIA*", "GordoEscroto*", "Gozado*", "GRELINHO*", "GRELO*", "grupo merda", 
     "Herege*", "Hitler", "horrenda", "Idiota", "IDIOTA*", "IDIOTICE*", "Imbecil*", 
     "IMBECIL*", "Inascivel*", "Invertebrado*", "ISCROTA*", "ISCROTO*", "Jacu*", 
-    "jap", "KCT*", "kike", "Komodo*", "Ku", "kys", "L+SBICA*", "LADR+O*", "LADROEIRA*", 
-    "LADRONA*", "LALAU*", "lazarento*", "Lazaro!*", "LEPROSA*", "Leproso*", "LEPROSO*", 
+    "jap", "KCT*", "kike", "Komodo*", "Ku", "kys", "L+SBICA*", "LADROEIRA*", 
+    "LADRONA*", "LALAU*", "lazarento*", "LEPROSA*", "Leproso*", "LEPROSO*", 
     "Lezado*", "lico", "Limpezaanal*", "MACHONA*", "MACHORRA*", "MANGUA¦A*", "MANGUACA*", 
-    "MariMoon*", "MASTURBA*", "membro random", "Meretriz*", "MiolodeCu*", "Mocorongo*", 
-    "MOCR+A*", "MOCREA*", "MOCREIA*", "MOLECA*", "MONDRONGA*", "MONDRONGO*", "mongoloid", 
+    "MariMoon*", "MASTURBA*", "membro random", "Meretriz*", "MiolodeCu*", "MONDRONGA*", "MONDRONGO*", "mongoloid", 
     "MontedeMerda*", "Morfetico*", "motherfucker", "Mulambo*", "n1bb", "n1gg", "NABA*", 
     "NADEGA*", "Nazi", "Nazista*", "negro", "n*g", "Nhaca*", "nibb", "nigg", "𝖓𝖎𝖌𝖌", 
-    "ninguem te quer", "ninguém te quer", "ninguem te quer nesse servidor", 
-    "ninguém te quer nesse servidor", "no teu ouvido", "Nonsense*", "ɴɪɢɢ", 
-    "Olhodocu*", "OlhoGordo*", "OLHOTA*", "OT-RIA*", "OT-RIO*", "otalio", "OTARIA*", 
+    "Nonsense*", "ɴɪɢɢ", "Olhodocu*", "OlhoGordo*", "OLHOTA*", "OT-RIA*", "OT-RIO*", "otalio", "OTARIA*", 
     "Otario", "Otario*", "OTARIO*", "P+STULA*", "Panaca*", "PASPALHA*", "PASPALHAO*", 
     "PASPALHO*", "Passaralho*", "PauNoCu*", "pedo", "PEIA*", "PEMBA*", "penis*", 
     "PENTELHA*", "PENTELHO*", "PER+*", "Periquita*", "PIC+O*", "PICAO*", "Pimenteira*", 
@@ -74,8 +71,10 @@ const blacklist_pt = new Set([
     "Vaiamerda*","vaisefuder*","Vaitomarnocu*","Vsfd", "Vtmnc","Vtnc","whore","XANA*","XANINHA*","Xavasca*","XAVASCA*",
     "XIBIU*","XIBUMBA*", "Xixizento*","XOCHOTA*","XOTA*","XOXOTA*","Xupetinha*","Xupisco*","Xurupita*","Xuxexo*",
     "xvideo","ZeBuceta*","Ziguizira*","Zina*","Zoiudo*","Zoneira*","Zulu*","Zureta*","me mata", "se mata", "pintoawards",
-    "xerecaawards", "pintosawards", "xerecasawards", "bucetaawards", "bucetasawards", "peitosawards", "pinto*", "pica*"
+    "xerecaawards", "pintosawards", "xerecasawards", "bucetaawards", "bucetasawards", "peito*", "pinto*", "pica*",
+    "peitoawards", "*nuds*", "*pack*", "raba*", "*porn*", "*f+ck*", "*sex", "incel", "gore", "nsfw", "broderagem", "brotheragem",
+    "*nud*", "*novinha*", "*novinho*"
 ]);
 
 
-export { blacklist_pt };
+export { blacklist };

@@ -85,7 +85,8 @@ const stopwords_pt = new Set([
     "kkk", "linda", "lindo", "eu", "nem", "ou", "ainda", "pois", "que", "como", "quando", "o", "não", "só",
     "quem", "pra", "sobre", "fui", "foi", "tinha", "foi", "há", "aí", "um", 
     "estava", "pelo", "essa", "este", "tava", "que", "no", "será", "foi", 
-    "ele", "ele", "ela", "como", "tem", "este", "pelo", "do", "que", "cara"
+    "ele", "ele", "ela", "como", "tem", "este", "pelo", "do", "que", "cara","dias", 
+    "cupom", "chave email",
 ]);
 
 export { stopwords_pt };
