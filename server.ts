@@ -2,7 +2,6 @@ import { Application, Router } from "https://deno.land/x/oak@v13.1.0/mod.ts";
 import { oakCors } from "https://deno.land/x/cors@v1.2.2/mod.ts";
 import {createWebSocketClient} from "./src/postsListening.ts";
 import { getTrendingTopics } from "./src/utils/getTrends.ts";
-import cron from "./src/config/cron.ts";
 
 const isDev = Deno.env.get('DEV') === 'true';
 const app = new Application();
@@ -27,17 +26,7 @@ async function startHttpServer() {
         await app.listen({ port: 8003 });
     }
 }
-function startCron() {
-    if(isDev) return;
-    try {
-        cron();
-    }
-    catch (error) {
-        console.error('Error updating trends:', error);
-    }
-}
 
-startCron()
 async function startServices() {
     await Promise.all([ createWebSocketClient(), startHttpServer() ]);
 }

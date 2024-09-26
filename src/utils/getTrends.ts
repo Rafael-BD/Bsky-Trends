@@ -20,7 +20,7 @@ export async function getTrendingTopics(limit: number = 10, lang: string = 'pt',
             const topGlobalWords = getTopGlobalWords(globalWordLimit * 2, lang as 'pt' | 'en' | 'es');
 
             // Check if all arrays are not empty
-            if (topWords.length > minCount || topPhrases.length > minCount || topHashtags.length > minCount || topGlobalWords.length > minCount) {
+            if (topWords.length >= minCount || topPhrases.length >= minCount || topHashtags.length >= minCount || topGlobalWords.length >= minCount) {
                 return { topWords, topPhrases, topHashtags, topGlobalWords };
             }
 
@@ -87,7 +87,6 @@ export async function getTrendingTopics(limit: number = 10, lang: string = 'pt',
         globalWords: topGlobalWordsClassified,
     };
 
-    console.log('Trends:', res);
     // Save trends to the database
     await saveTrend(res, lang);
 

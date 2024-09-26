@@ -23,7 +23,7 @@ function filterSentences(sentences: string[]): string[] {
 function filterWords(words: string[], _lang: string): string[] {
     return words.filter(word => {
         const isHashtag = word.startsWith("#");
-        const lowerCaseWord = word.toLowerCase().replace(/^#/, '').replace(/-/g, '');
+        const lowerCaseWord = word.toLowerCase().replace(/^#/, '');
         const isBlacklisted = blacklistRegexes.some(regex => regex.test(lowerCaseWord));
         const hasMoreThanOneChar = lowerCaseWord.length > 1;
         const isOneWordOnly = lowerCaseWord.split(" ").length === 1;

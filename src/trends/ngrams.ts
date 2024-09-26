@@ -1,3 +1,8 @@
+import { supabaseSvc as supabase } from "../config/supabase.ts";
+import { compress, decompress } from "https://deno.land/x/lz4@0.1.3/mod.ts";
+import { updateTrends } from "../services/updateTrendsDB.ts";
+const isDev = Deno.env.get('DEV') === 'true';
+
 class CountMinSketch {
     private depth: number;
     private width: number;
@@ -11,15 +16,6 @@ class CountMinSketch {
     private cleanIntervalId: NodeJS.Timeout | null;
     private minCount: number;
 
-    /**
-     * @param depth Depth of the table (number of hash functions)
-     * @param width Width of the table (size of each row)
-     * @param maxDates Maximum number of dates to be stored
-     * @param maxAgeInHours Maximum age in hours to keep entries
-     * @param similarityThreshold Similarity threshold to group similar words/phrases
-     * @param cleanInterval Interval in milliseconds to clean old entries
-     * @param minCount Minimum count to keep entries
-     */
     constructor(depth = 5, width = 1000, maxDates = 5, maxAgeInHours = 12, similarityThreshold = 0.8, cleanInterval = 1800000, minCount = 10) {  
         this.depth = depth;
         this.width = width;
@@ -35,12 +31,68 @@ class CountMinSketch {
         this.startPeriodicCleaning();
     }
 
-    /**
-     * Generate hash functions to be used in the Count-Min Sketch
-     * @param depth Depth of the table (number of hash functions)
-     * @param width Width of the table (size of each row)
-     * @returns Array of hash functions
-     */
+    toJSON() {
+        return {
+            depth: this.depth,
+            width: this.width,
+            table: this.table,
+            ngramsCounter: Array.from(this.ngramsCounter.entries()),
+            maxDates: this.maxDates,
+            maxAgeInHours: this.maxAgeInHours,
+            similarityThreshold: this.similarityThreshold,
+            cleanInterval: this.cleanInterval,
+            minCount: this.minCount,
+        };
+    }
+
+    static fromJSON(data: { depth: number, width: number, table: number[][], ngramsCounter: [string, { original: string, count: number, dates: string[] }][], maxDates: number, maxAgeInHours: number, similarityThreshold: number, cleanInterval: number, minCount: number }) {
+        const sketch = new CountMinSketch(
+            data.depth,
+            data.width,
+            data.maxDates,
+            data.maxAgeInHours,
+            data.similarityThreshold,
+            data.cleanInterval,
+            data.minCount
+        );
+        sketch.table = data.table;
+        sketch.ngramsCounter = new Map(data.ngramsCounter.map(([key, value]) => [key, { ...value, dates: value.dates.map(dateStr => new Date(dateStr)) }]));
+        return sketch;
+    }
+
+    async saveToSupabase(lang: string, type: string) {
+        const data = JSON.stringify(this.toJSON());
+        const compressedData = compress(new TextEncoder().encode(data));
+        const { error } = await supabase.storage
+            .from("checkpoints")
+            .upload(`${lang}_${type}_checkpoint.lz4`, new File([compressedData], `${lang}_${type}_checkpoint.lz4`), {
+                upsert: true,
+            });
+
+        if (error) {
+            console.error(`Error saving ${type} checkpoint to Supabase:`, error);
+        } else {
+            console.log(`${type} checkpoint saved to Supabase`);
+        }
+        await updateTrends();
+    }
+
+    static async loadFromSupabase(lang: string, type: string): Promise<CountMinSketch | null> {
+        const { data, error } = await supabase.storage
+            .from("checkpoints")
+            .download(`${lang}_${type}_checkpoint.lz4`);
+
+        if (error) {
+            console.error(`Error loading ${type} checkpoint from Supabase:`, error);
+            return null;
+        } else {
+            const compressedData = await data.arrayBuffer();
+            const decompressedData = decompress(new Uint8Array(compressedData));
+            const jsonData = new TextDecoder().decode(decompressedData);
+            return CountMinSketch.fromJSON(JSON.parse(jsonData));
+        }
+    }
+
     private generateHashFunctions(depth: number, width: number): Array<(str: string) => number> {
         const hashFunctions = [];
         for (let i = 0; i < depth; i++) {
@@ -56,12 +108,6 @@ class CountMinSketch {
         return hashFunctions;
     }
 
-    /**
-     * Calculate the Levenshtein distance between two strings
-     * @param a First string
-     * @param b Second string
-     * @returns Levenshtein distance
-     */
     private levenshtein(a: string, b: string): number {
         const matrix = Array.from({ length: a.length + 1 }, () => Array(b.length + 1).fill(0));
         for (let i = 0; i <= a.length; i++) matrix[i][0] = i;
@@ -79,26 +125,13 @@ class CountMinSketch {
         return matrix[a.length][b.length];
     }
 
-    /**
-     * Calculate the similarity between two strings for indentifying and merge similar topics
-     * @param a First string
-     * @param b Second string
-     * @returns Similarity between the strings
-     */
     private similarity(a: string, b: string): number {
         const maxLen = Math.max(a.length, b.length);
         if (maxLen === 0) return 1.0;
         return (maxLen - this.levenshtein(a, b)) / maxLen;
     }
 
-    /**
-     * Update the Count-Min Sketch with a new item
-     * @param item Item to be updated
-     * @param date Date of the item
-     * @param _lang Language of the item
-     */
     update(item: string, date: Date, _lang: string) {
-        // console.log('Updating item:', item, 'at', date, 'for lang:', _lang);
         const lowerCaseItem = item.toLowerCase();
 
         let similarKey = lowerCaseItem;
@@ -125,14 +158,8 @@ class CountMinSketch {
         }
     }
 
-    /**
-     * Get the top N n-grams from the Count-Min Sketch
-     * @param n Number of n-grams to return
-     * @returns Array of the top n-grams
-    */
     getTopNgrams(n = 10): Array<{ item: string, count: number }> {
         const now = new Date();
-        // Return the top n-grams sorted by weight (count / age)
         return Array.from(this.ngramsCounter.entries())
             .map(([_key, value]) => {
                 const ageInHours = value.dates.reduce((sum, date) => sum + (now.getTime() - date.getTime()) / (1000 * 60 * 60), 0) / value.dates.length;
@@ -144,9 +171,6 @@ class CountMinSketch {
             .map(entry => ({ item: entry.item, count: entry.count }));
     }
 
-    /**
-     * Clean old entries from the Count-Min Sketch based on the maximum age and minimum count
-     */
     private cleanOldEntries() {
         const now = new Date();
         for (const [key, value] of this.ngramsCounter.entries()) {
@@ -171,30 +195,23 @@ class CountMinSketch {
 
 const sketchesByLang = {
     pt: {
-        wordSketch: new CountMinSketch(),
-        phraseSketch: new CountMinSketch(),
-        hashtagsSketch: new CountMinSketch(),
+        wordSketch: await CountMinSketch.loadFromSupabase("pt", "wordSketch") || new CountMinSketch(),
+        phraseSketch: await CountMinSketch.loadFromSupabase("pt", "phraseSketch") || new CountMinSketch(),
+        hashtagsSketch: await CountMinSketch.loadFromSupabase("pt", "hashtagsSketch") || new CountMinSketch(),
     },
     en: {
-        wordSketch: new CountMinSketch(),
-        phraseSketch: new CountMinSketch(),
-        hashtagsSketch: new CountMinSketch(),
+        wordSketch: await CountMinSketch.loadFromSupabase("en", "wordSketch") || new CountMinSketch(),
+        phraseSketch: await CountMinSketch.loadFromSupabase("en", "phraseSketch") || new CountMinSketch(),
+        hashtagsSketch: await CountMinSketch.loadFromSupabase("en", "hashtagsSketch") || new CountMinSketch(),
     },
     es: {
-        wordSketch: new CountMinSketch(),
-        phraseSketch: new CountMinSketch(),
-        hashtagsSketch: new CountMinSketch(),
+        wordSketch: await CountMinSketch.loadFromSupabase("es", "wordSketch") || new CountMinSketch(),
+        phraseSketch: await CountMinSketch.loadFromSupabase("es", "phraseSketch") || new CountMinSketch(),
+        hashtagsSketch: await CountMinSketch.loadFromSupabase("es", "hashtagsSketch") || new CountMinSketch(),
     }
 };
 
-/**
- * Update the Count-Min Sketches with new n-grams
- * @param ngrams Object containing the n-grams to be updated
- * @param date Date of the n-grams
- * @param lang Language of the n-grams
-*/
 function updateSketches(ngrams: { words: string[], phrases: string[], hashtags: string[] }, date: Date, lang: 'pt' | 'en' | 'es') {
-    // Filter out n-grams with less than 2 characters
     const filterNgrams = (ngrams: string[]) => ngrams.filter(ngram => ngram.trim().length > 1);
 
     const filteredWords = filterNgrams(ngrams.words);
@@ -205,6 +222,17 @@ function updateSketches(ngrams: { words: string[], phrases: string[], hashtags: 
     filteredPhrases.forEach(ngram => sketchesByLang[lang].phraseSketch.update(ngram, date, lang));
     filteredHashtags.forEach(ngram => sketchesByLang[lang].hashtagsSketch.update(ngram, date, lang));
 }
+
+const saveInterval = 5 * 60 * 1000; // 5 minutos em milissegundos
+
+setInterval(async () => {
+    for (const lang in sketchesByLang) {
+        const language = lang as 'pt' | 'en' | 'es';
+        await sketchesByLang[language].wordSketch.saveToSupabase(language, "wordSketch");
+        await sketchesByLang[language].phraseSketch.saveToSupabase(language, "phraseSketch");
+        await sketchesByLang[language].hashtagsSketch.saveToSupabase(language, "hashtagsSketch");
+    }
+}, saveInterval);
 
 function getTopWords(n = 10, lang: 'pt' | 'en' | 'es') {
     return sketchesByLang[lang].wordSketch.getTopNgrams(n);
@@ -221,7 +249,7 @@ function getTopHashtags(n = 10, lang: 'pt' | 'en' | 'es') {
 function getTopGlobalWords(n = 10, langToExclude: 'pt' | 'en' | 'es') {
     const allWords = Object.entries(sketchesByLang)
         .filter(([key]) => key !== langToExclude)
-        .flatMap(([, sketch]) => sketch.wordSketch.getTopNgrams(n));
+        .flatMap(([, sketch]) => (sketch as { wordSketch: CountMinSketch }).wordSketch.getTopNgrams(n));
 
     const wordCounts = new Map<string, number>();
     allWords.forEach(word => {
