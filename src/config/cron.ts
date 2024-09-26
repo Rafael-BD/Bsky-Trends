@@ -1,8 +1,8 @@
 import { getTrendingTopics } from "../utils/getTrends.ts";
 
 // Cron job to update trends every 20 minutes
-export default function cron() {
-    Deno.cron("Trends update", { minute: { every: 1 } }, async() => {
+export default async function cron() {
+    await Deno.cron("Trends update", { minute: { every: 20 } }, async() => {
         console.log('Updating time:', new Date());
         
         try {

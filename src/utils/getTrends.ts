@@ -1,7 +1,6 @@
 import { getTopWords, getTopPhrases, getTopGlobalWords, getTopHashtags } from "../trends/ngrams.ts";
 import { classifyText } from "../trends/classifier.js";
-// deno-lint-ignore no-unused-vars
-import { saveTrend, saveTrendDev } from "../services/saveTrends.ts";
+import { saveTrend } from "../services/saveTrends.ts";
 
 export async function getTrendingTopics(limit: number = 10, lang: string = 'pt', minCount: number = 5) {
     // Calculate limits for each type of topic 

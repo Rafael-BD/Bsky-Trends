@@ -1,5 +1,6 @@
-// deno-lint-ignore-file no-unused-vars
 import { supabaseSvc } from "../config/supabase.ts";
+
+const isDev = Deno.env.get('DEV') === 'true';
 
 interface TrendItem {
     topic: string;
@@ -19,7 +20,11 @@ interface Trend {
  * @param trend Trend to be saved
  * @param lang Language of the trend
  */
-export const saveTrend = async (trend: Trend, lang: string) => {
+const saveTrendProd = async (trend: Trend, lang: string) => {
+    // Se o trend não tiver itens nas listas, não salva
+    if (trend.words.length === 0 && trend.phrases.length === 0 && trend.hashtags.length === 0 && trend.globalWords.length === 0) {
+        return;
+    }
     const updated_at = new Date().toISOString();
     const { error } = await supabaseSvc
         .from('trends')
@@ -34,15 +39,17 @@ export const saveTrend = async (trend: Trend, lang: string) => {
 }
 
 export const saveTrendDev = async (trend: Trend, lang: string) => {
-    // const updated_at = new Date().toISOString();
-    // const {error } = await supabaseSvc
-    //     .from('trends_dev')
-    //     .update({trend: trend, lang: lang, updated_at: updated_at})
-    //     .eq('lang', lang);
+    const updated_at = new Date().toISOString();
+    const { error } = await supabaseSvc
+        .from('trends_dev')
+        .update({trend: trend, lang: lang, updated_at: updated_at})
+        .eq('lang', lang);
 
-    // if (error) {
-    //     console.error('Error saving trend:', error);
-    // } else {
-    //     console.log('Trend saved or updated:',);
-    // }
+    if (error) {
+        console.error('Error saving trend:', error);
+    } else {
+        console.log('Trend saved or updated in dev table:', lang);
+    }
 };
+
+export const saveTrend = isDev ? saveTrendDev : saveTrendProd;

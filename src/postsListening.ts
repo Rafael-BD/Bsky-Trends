@@ -1,3 +1,4 @@
+// deno-lint-ignore-file require-await
 import { stopwords_pt } from "./filters/stopwords/stopwords_pt.ts";
 import {
     ComAtprotoSyncSubscribeRepos,
@@ -16,8 +17,8 @@ import { extractHashtags } from "./trends/hashtags.ts";
  * from the Bsky network and update the sketches with the
  * extracted ngrams (words, phrases and hashtags).
  */
-function createWebSocketClient() {
-    function connectToWebSocket() {
+async function createWebSocketClient() {
+    async function connectToWebSocket() {
         try {
             const client = subscribeRepos(`wss://bsky.network`, { decodeRepoOps: true })
             client.on('message', (m: SubscribeReposMessage) => {
@@ -69,7 +70,7 @@ function createWebSocketClient() {
         }
     }
 
-    connectToWebSocket();
+    await connectToWebSocket();
 }
 
 
