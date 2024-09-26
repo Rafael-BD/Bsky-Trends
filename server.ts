@@ -4,13 +4,12 @@ import { oakCors } from "https://deno.land/x/cors@v1.2.2/mod.ts";
 import {createWebSocketClient} from "./src/postsListening.ts";
 import { getTrendingTopics } from "./src/utils/getTrends.ts";
 
-// Configurações do servidor HTTP com Oak
 // const app = new Application();
 
 // const router = new Router();
 
 // router.get("/trending", async (ctx) => {
-//     const trends = await getTrendingTopics(20, 'pt');
+//     const trends = await getTrendingTopics(20, 'pt'); // change to 'en' or 'es' to get trends in other languages
 //     ctx.response.body = trends;
 // });
 
