@@ -31,7 +31,8 @@ const stopwords_en = new Set([
     "brb", "bbl", "ttyl", "gr8", "b4", "l8r", "smh", "fyi", "jk", "np", "tbt",
     "tbf", "tmi", "wtf", "yolo", "fomo", "icymi", "irl", "nvm", "rofl", "tbh",
     "tldr", "omw", "bday", "bff", "btwn", "cya", "dm", "fb", "ff", "ftw", "hmu",
-    "ist", "k", "lmao", "lmk", "mcm", "nsfw", "obvi", "ppl", "rly", "ymmv", "yw"
+    "ist", "k", "lmao", "lmk", "mcm", "nsfw", "obvi", "ppl", "rly", "ymmv", "yw",
+    "nur","den"
 ]);
 
 export { stopwords_en };

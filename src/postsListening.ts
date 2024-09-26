@@ -4,13 +4,18 @@ import {
     SubscribeReposMessage,
     subscribeRepos,
 } from 'npm:atproto-firehose@0.2.2';
-import { extractSentences } from "./processing/sentences.ts";
+import { extractSentences } from "./trends/sentences.ts";
 import { preProcessText } from "./utils/preProcess.ts";
-import { filterSentences, filterWords } from "./filters/filter.ts";
-import { updateSketches, updateGlobalSketch } from "./processing/countMinSketch.ts";
-import { extractWords } from "./processing/words.ts"; // Importando o identificador de entidades
-import { extractHashtags } from "./processing/hashtags.ts";
+import { filterSentences, filterWords } from "./utils/filter.ts";
+import { updateSketches } from "./trends/ngrams.ts";
+import { extractWords } from "./trends/words.ts"; // Importando o identificador de entidades
+import { extractHashtags } from "./trends/hashtags.ts";
 
+/**
+ * Function to create a WebSocket client to listen to posts
+ * from the Bsky network and update the sketches with the
+ * extracted ngrams (words, phrases and hashtags).
+ */
 function createWebSocketClient() {
     function connectToWebSocket() {
         try {
@@ -27,25 +32,24 @@ function createWebSocketClient() {
                         const currentDate = new Date();
                         const diff = currentDate.getTime() - postDate.getTime();
                         const diffInHours = diff / (1000 * 60 * 60); 
-                        if (diffInHours > 12) return;
+                        if (diffInHours > 12) return; // Ignore posts older than 12 hours
+
+                        const lang = payload.langs[0];
+                        if(lang !== 'pt' && lang !== 'en' && lang !== 'es') return;
 
                         const txt = payload.text.trim();
                     
                         const processedText = preProcessText(txt);
                         const date = new Date(payload.createdAt);
-                    
-                        if(payload.langs.includes('pt')){
-                            if (processedText.split(" ").every(word => stopwords_pt.has(word))) return;
-                            const phrases = filterSentences(extractSentences(processedText));
-                            const words = filterWords(extractWords(processedText), 'pt');
-                            const hashtags = filterWords(extractHashtags(processedText), 'pt');
-                            updateSketches({ words, phrases, hashtags }, date);
-                        }
-                        if (!payload.langs.includes('pt')){
-                            if (processedText.split(" ").every(word => stopwords_pt.has(word))) return;
-                            const words = filterWords(extractWords(processedText), 'global');
-                            updateGlobalSketch({ words }, date);
-                        }
+
+                        if (processedText.split(" ").every(word => stopwords_pt.has(word))) return; // Ignore posts with only stopwords
+
+                        // Extract phrases, words and hashtags
+                        const phrases = filterSentences(extractSentences(processedText));
+                        const words = filterWords(extractWords(processedText), lang);
+                        const hashtags = filterWords(extractHashtags(processedText), lang);
+                        updateSketches({ words, phrases, hashtags }, date, lang as 'pt' | 'en' | 'es');
+                
                     });
                 }
             })
@@ -57,7 +61,7 @@ function createWebSocketClient() {
 
             client.on('close', () => {
                 console.error('Conexão WebSocket fechada');
-                setTimeout(() => connectToWebSocket(), 5000);
+                setTimeout(() => connectToWebSocket(), 1000);
             })
         } catch (error) {
             console.error('Erro na conexão WebSocket:', error);
