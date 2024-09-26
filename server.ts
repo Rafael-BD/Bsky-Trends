@@ -3,6 +3,7 @@ import { Application, Router } from "https://deno.land/x/oak@v13.1.0/mod.ts";
 import { oakCors } from "https://deno.land/x/cors@v1.2.2/mod.ts";
 import {createWebSocketClient} from "./src/postsListening.ts";
 import { getTrendingTopics } from "./src/utils/getTrends.ts";
+import cron from "./src/config/cron.ts";
 
 // const app = new Application();
 
@@ -32,5 +33,5 @@ import { getTrendingTopics } from "./src/utils/getTrends.ts";
 // }
 
 // startServices();
-
+cron();
 createWebSocketClient()
