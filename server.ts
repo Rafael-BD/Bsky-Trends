@@ -18,12 +18,10 @@ router.get("/trending", async (ctx) => {
 });
 
 
-// Middleware e rotas
 app.use(oakCors({ origin: "*" }));
 app.use(router.routes());
 app.use(router.allowedMethods());
 
-// Função para rodar o servidor HTTP
 async function startHttpServer() {
     if(isDev) {
         await app.listen({ port: 8003 });
