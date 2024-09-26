@@ -1,6 +1,6 @@
 import { getTopWords, getTopPhrases, getTopGlobalWords, getTopHashtags } from "../trends/ngrams.ts";
 import { classifyText } from "../trends/classifier.js";
-import { saveTrend } from "../services/saveTrends.ts";
+import { saveTrend, saveTrendDev } from "../services/saveTrends.ts";
 
 export async function getTrendingTopics(limit: number = 10, lang: string = 'pt', minCount: number = 5) {
     // Calculate limits for each type of topic 
@@ -33,7 +33,7 @@ export async function getTrendingTopics(limit: number = 10, lang: string = 'pt',
 
     // Classify all topics
     const topics = filteredTopics.map(topic => topic.item);
-    const classifications = await classifyText(topics);
+    const classifications = classifyText(topics);
     const classifiedTopics = filteredTopics.map((topic, index) => ({
         ...topic,
         classification: classifications[index]

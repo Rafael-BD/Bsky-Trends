@@ -5,34 +5,32 @@ import {createWebSocketClient} from "./src/postsListening.ts";
 import { getTrendingTopics } from "./src/utils/getTrends.ts";
 import cron from "./src/config/cron.ts";
 
-// const app = new Application();
+const app = new Application();
 
-// const router = new Router();
+const router = new Router();
 
-// router.get("/trending", async (ctx) => {
-//     const trends = await getTrendingTopics(20, 'pt'); // change to 'en' or 'es' to get trends in other languages
-//     ctx.response.body = trends;
-// });
-
-
-// // Middleware e rotas
-// app.use(oakCors({ origin: "*" }));
-// app.use(router.routes());
-// app.use(router.allowedMethods());
-
-// console.log("App Operations Backend running on http://localhost:8003");
-
-// // Função para rodar o servidor HTTP
-// async function startHttpServer() {
-//     await app.listen({ port: 8003 });
-// }
+router.get("/trending", async (ctx) => {
+    const trends = await getTrendingTopics(20, 'pt'); // change to 'en' or 'es' to get trends in other languages
+    ctx.response.body = trends;
+});
 
 
-// async function startServices() {
-//     await Promise.all([ createWebSocketClient()]);
-// }
+// Middleware e rotas
+app.use(oakCors({ origin: "*" }));
+app.use(router.routes());
+app.use(router.allowedMethods());
 
-// startServices();
+console.log("App Operations Backend running on http://localhost:8003");
+
+// Função para rodar o servidor HTTP
+async function startHttpServer() {
+    await app.listen({ port: 8003 });
+}
 
 cron();
-createWebSocketClient()
+async function startServices() {
+    await Promise.all([ createWebSocketClient()]);
+}
+
+startServices();
+// createWebSocketClient()
