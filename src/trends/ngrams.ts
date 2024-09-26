@@ -9,7 +9,16 @@ interface Sketches {
 }
 
 async function saveSketchesToKV(sketches: Sketches) {
-    const compressedData = compress(new TextEncoder().encode(JSON.stringify(sketches)));
+    const sketchesData: { [key: string]: { wordSketch: object, phraseSketch: object, hashtagsSketch: object } } = {};
+    for (const lang in sketches) {
+        sketchesData[lang] = {
+            wordSketch: sketches[lang].wordSketch.toJSON(),
+            phraseSketch: sketches[lang].phraseSketch.toJSON(),
+            hashtagsSketch: sketches[lang].hashtagsSketch.toJSON(),
+        };
+    }
+
+    const compressedData = compress(new TextEncoder().encode(JSON.stringify(sketchesData)));
     const chunkSize = 65536 - 1000; // Deixar um espaço para metadados
     const chunks = [];
 
@@ -51,9 +60,15 @@ async function loadSketchesFromKV(): Promise<Sketches | null> {
     const sketches: Sketches = {};
     for (const lang in sketchesData) {
         sketches[lang] = {
-            wordSketch: Object.assign(new CountMinSketch(), sketchesData[lang].wordSketch),
-            phraseSketch: Object.assign(new CountMinSketch(), sketchesData[lang].phraseSketch),
-            hashtagsSketch: Object.assign(new CountMinSketch(), sketchesData[lang].hashtagsSketch),
+            wordSketch: Object.assign(new CountMinSketch(), sketchesData[lang].wordSketch, {
+                ngramsCounter: new Map(Object.entries(sketchesData[lang].wordSketch.ngramsCounter))
+            }),
+            phraseSketch: Object.assign(new CountMinSketch(), sketchesData[lang].phraseSketch, {
+                ngramsCounter: new Map(Object.entries(sketchesData[lang].phraseSketch.ngramsCounter))
+            }),
+            hashtagsSketch: Object.assign(new CountMinSketch(), sketchesData[lang].hashtagsSketch, {
+                ngramsCounter: new Map(Object.entries(sketchesData[lang].hashtagsSketch.ngramsCounter))
+            }),
         };
     }
 
@@ -95,6 +110,35 @@ class CountMinSketch {
         this.cleanIntervalId = null;
         this.minCount = minCount; // Minimum count to keep entries
         this.startPeriodicCleaning();
+    }
+
+    toJSON() {
+        return {
+            depth: this.depth,
+            width: this.width,
+            table: this.table,
+            ngramsCounter: Array.from(this.ngramsCounter.entries()),
+            maxDates: this.maxDates,
+            maxAgeInHours: this.maxAgeInHours,
+            similarityThreshold: this.similarityThreshold,
+            cleanInterval: this.cleanInterval,
+            minCount: this.minCount,
+        };
+    }
+
+    static fromJSON(data: { depth: number, width: number, table: number[][], ngramsCounter: [string, { original: string, count: number, dates: Date[] }][], maxDates: number, maxAgeInHours: number, similarityThreshold: number, cleanInterval: number, minCount: number }) {
+        const sketch = new CountMinSketch(
+            data.depth,
+            data.width,
+            data.maxDates,
+            data.maxAgeInHours,
+            data.similarityThreshold,
+            data.cleanInterval,
+            data.minCount
+        );
+        sketch.table = data.table;
+        sketch.ngramsCounter = new Map(data.ngramsCounter);
+        return sketch;
     }
 
     /**
