@@ -20,7 +20,7 @@ export async function getTrendingTopics(limit: number = 10, lang: string = 'pt',
             const topGlobalWords = getTopGlobalWords(globalWordLimit * 2, lang as 'pt' | 'en' | 'es');
 
             // Check if all arrays are not empty
-            if (topWords.length > 0 || topPhrases.length > 0 || topHashtags.length > 0 || topGlobalWords.length > 0) {
+            if (topWords.length > minCount || topPhrases.length > minCount || topHashtags.length > minCount || topGlobalWords.length > minCount) {
                 return { topWords, topPhrases, topHashtags, topGlobalWords };
             }
 
