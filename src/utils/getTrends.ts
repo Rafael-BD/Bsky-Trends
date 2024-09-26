@@ -11,21 +11,21 @@ export async function getTrendingTopics(limit: number = 10, lang: string = 'pt',
     const globalWordLimit = limit - wordLimit - phraseLimit - hashtagLimit; // 10% of the limit
 
     // Get top topics for each type
-    const topWords = getTopWords(wordLimit, lang as 'pt' | 'en' | 'es');
-    const topPhrases = getTopPhrases(phraseLimit, lang as 'pt' | 'en' | 'es');
-    const topHashtags = getTopHashtags(hashtagLimit, lang as 'pt' | 'en' | 'es');
-    const topGlobalWords = getTopGlobalWords(globalWordLimit * 2, lang as 'pt' | 'en' | 'es');
+    const topWords = await getTopWords(wordLimit, lang as 'pt' | 'en' | 'es');
+    const topPhrases = await getTopPhrases(phraseLimit, lang as 'pt' | 'en' | 'es');
+    const topHashtags = await getTopHashtags(hashtagLimit, lang as 'pt' | 'en' | 'es');
+    const topGlobalWords = await getTopGlobalWords(globalWordLimit * 2, lang as 'pt' | 'en' | 'es');
 
     // Filter out topGlobalWords that are already in topWords
     const filteredTopGlobalWords = topGlobalWords.filter(globalWord => 
-        !topWords.some(word => word.item.toLowerCase() === globalWord.item.toLowerCase())
+        !topWords.some((word: { item: string }) => word.item.toLowerCase() === globalWord.item.toLowerCase())
     ).slice(0, globalWordLimit);
 
     // Combine all topics into one array
     const allTopics = [
-        ...topWords.map(word => ({ type: 'word', ...word })),
-        ...topPhrases.map(phrase => ({ type: 'phrase', ...phrase })),
-        ...topHashtags.map(hashtag => ({ type: 'hashtag', ...hashtag })),
+        ...topWords.map((word: { item: string, count: number }) => ({ type: 'word', ...word })),
+        ...topPhrases.map((phrase: { item: string, count: number }) => ({ type: 'phrase', ...phrase })),
+        ...topHashtags.map((hashtag: { item: string, count: number }) => ({ type: 'hashtag', ...hashtag })),
         ...filteredTopGlobalWords.map(word => ({ type: 'globalWord', ...word }))
     ];
 
