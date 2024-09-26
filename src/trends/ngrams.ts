@@ -207,8 +207,8 @@ function updateSketches(ngrams: { words: string[], phrases: string[], hashtags: 
     filteredPhrases.forEach(ngram => sketchesByLang[lang].phraseSketch.update(ngram, date, lang));
     filteredHashtags.forEach(ngram => sketchesByLang[lang].hashtagsSketch.update(ngram, date, lang));
 
-    // Save the sketches to KV
-    kv.set(['sketches'], sketchesByLang).then(() => {
+    
+    kv.set(['sketches'], JSON.stringify(sketchesByLang)).then(() => {
         console.log('Sketches saved to KV');
     }).catch((error) => {
         console.error('Error saving sketches to KV:', error);
@@ -216,25 +216,54 @@ function updateSketches(ngrams: { words: string[], phrases: string[], hashtags: 
 }
 
 async function getTopWords(n = 10, lang: 'pt' | 'en' | 'es') {
-    const sketches = await kv.get(['sketches']) as unknown as { [key: string]: typeof sketchesByLang['pt'] | typeof sketchesByLang['en'] | typeof sketchesByLang['es'] };
-    return sketches[lang].wordSketch.getTopNgrams(n);
+    const sketchesEntry = await kv.get(['sketches']);
+    if (!sketchesEntry.value) return [];
+    const sketches = sketchesEntry.value as string;
+    try {
+        return JSON.parse(sketches)[lang].wordSketch.getTopNgrams(n);
+    } catch (error) {
+        console.error('Error getting top words:', error);
+        return [];
+    }
 }
 
 async function getTopPhrases(n = 10, lang: 'pt' | 'en' | 'es') {
-    const sketches = await kv.get(['sketches']) as unknown as { [key: string]: typeof sketchesByLang['pt'] | typeof sketchesByLang['en'] | typeof sketchesByLang['es'] };
-    return sketches[lang].phraseSketch.getTopNgrams(n);
+    const sketchesEntry = await kv.get(['sketches']);
+    if (!sketchesEntry.value) return [];
+    const sketches = sketchesEntry.value as string;
+    try {
+        return JSON.parse(sketches)[lang].phraseSketch.getTopNgrams(n);
+    } catch (error) {
+        console.error('Error getting top phrases:', error);
+        return [];
+    }
 }
 
 async function getTopHashtags(n = 10, lang: 'pt' | 'en' | 'es') {
-    const sketches = await kv.get(['sketches']) as unknown as { [key: string]: typeof sketchesByLang['pt'] | typeof sketchesByLang['en'] | typeof sketchesByLang['es'] };
-    return sketches[lang].hashtagsSketch.getTopNgrams(n);
+    const sketchesEntry = await kv.get(['sketches']);
+    if (!sketchesEntry.value) return [];
+    const sketches = sketchesEntry.value as string;
+    try {
+        return JSON.parse(sketches)[lang].hashtagsSketch.getTopNgrams(n);
+    } catch (error) {
+        console.error('Error getting top hashtags:', error);
+        return [];
+    }
 }
 
 async function getTopGlobalWords(n = 10, langToExclude: 'pt' | 'en' | 'es') {
-    const sketches = await kv.get(['sketches']) as unknown as { [key: string]: typeof sketchesByLang['pt'] | typeof sketchesByLang['en'] | typeof sketchesByLang['es'] };
+    const sketchesEntry = await kv.get(['sketches']);
+    if (!sketchesEntry.value) return [];
+    let sketches = null;
+    try {
+        sketches = JSON.parse(sketchesEntry.value as string);
+    } catch (error) {
+        console.error('Error getting top global words:', error);
+        return [];
+    }
     const allWords = Object.entries(sketches)
         .filter(([key]) => key !== langToExclude)
-        .flatMap(([, sketch]) => sketch.wordSketch.getTopNgrams(n));
+        .flatMap(([, sketch]) => (sketch as { wordSketch: CountMinSketch }).wordSketch.getTopNgrams(n));
 
     const wordCounts = new Map<string, number>();
     allWords.forEach(word => {
