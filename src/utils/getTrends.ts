@@ -9,11 +9,30 @@ export async function getTrendingTopics(limit: number = 10, lang: string = 'pt',
     const hashtagLimit = Math.floor(limit * 0.3); // 30% of the limit
     const globalWordLimit = limit - wordLimit - phraseLimit - hashtagLimit; // 10% of the limit
 
-    // Get top topics for each type
-    const topWords = getTopWords(wordLimit, lang as 'pt' | 'en' | 'es');
-    const topPhrases = getTopPhrases(phraseLimit, lang as 'pt' | 'en' | 'es');
-    const topHashtags = getTopHashtags(hashtagLimit, lang as 'pt' | 'en' | 'es');
-    const topGlobalWords = getTopGlobalWords(globalWordLimit * 2, lang as 'pt' | 'en' | 'es');
+    const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+    // Function to get top topics with retries
+    async function getTopTopicsWithRetries(retries: number = 3, delay: number = 10000) {
+        for (let attempt = 0; attempt < retries; attempt++) {
+            const topWords = getTopWords(wordLimit, lang as 'pt' | 'en' | 'es');
+            const topPhrases = getTopPhrases(phraseLimit, lang as 'pt' | 'en' | 'es');
+            const topHashtags = getTopHashtags(hashtagLimit, lang as 'pt' | 'en' | 'es');
+            const topGlobalWords = getTopGlobalWords(globalWordLimit * 2, lang as 'pt' | 'en' | 'es');
+
+            // Check if all arrays are not empty
+            if (topWords.length > 0 || topPhrases.length > 0 || topHashtags.length > 0 || topGlobalWords.length > 0) {
+                return { topWords, topPhrases, topHashtags, topGlobalWords };
+            }
+
+            console.log(`Attempt ${attempt + 1} failed. Retrying in ${delay / 1000} seconds...`);
+            await wait(delay);
+        }
+
+        return { topWords: [], topPhrases: [], topHashtags: [], topGlobalWords: [] };
+    }
+
+    // Get top topics with retries
+    const { topWords, topPhrases, topHashtags, topGlobalWords } = await getTopTopicsWithRetries();
 
     // Filter out topGlobalWords that are already in topWords
     const filteredTopGlobalWords = topGlobalWords.filter(globalWord => 
@@ -33,7 +52,7 @@ export async function getTrendingTopics(limit: number = 10, lang: string = 'pt',
 
     // Classify all topics
     const topics = filteredTopics.map(topic => topic.item);
-    const classifications = classifyText(topics);
+    const classifications = await classifyText(topics);
     const classifiedTopics = filteredTopics.map((topic, index) => ({
         ...topic,
         classification: classifications[index]
@@ -68,6 +87,7 @@ export async function getTrendingTopics(limit: number = 10, lang: string = 'pt',
         globalWords: topGlobalWordsClassified,
     };
 
+    console.log('Trends:', res);
     // Save trends to the database
     await saveTrend(res, lang);
 

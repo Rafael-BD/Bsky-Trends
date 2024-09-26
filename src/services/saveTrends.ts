@@ -23,6 +23,7 @@ interface Trend {
 const saveTrendProd = async (trend: Trend, lang: string) => {
     // Se o trend não tiver itens nas listas, não salva
     if (trend.words.length === 0 && trend.phrases.length === 0 && trend.hashtags.length === 0 && trend.globalWords.length === 0) {
+        console.warn('Empty trend, not saving:', lang);
         return;
     }
     const updated_at = new Date().toISOString();

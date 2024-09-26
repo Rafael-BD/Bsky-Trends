@@ -27,18 +27,19 @@ async function startHttpServer() {
         await app.listen({ port: 8003 });
     }
 }
-async function startCron() {
+function startCron() {
     if(isDev) return;
     try {
-        await cron();
+        cron();
     }
     catch (error) {
         console.error('Error updating trends:', error);
     }
 }
 
+startCron()
 async function startServices() {
-    await Promise.all([ createWebSocketClient(), startCron(), startHttpServer() ]);
+    await Promise.all([ createWebSocketClient(), startHttpServer() ]);
 }
 
 startServices();
