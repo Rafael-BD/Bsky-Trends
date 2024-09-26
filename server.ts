@@ -33,5 +33,6 @@ import cron from "./src/config/cron.ts";
 // }
 
 // startServices();
+
 cron();
 createWebSocketClient()
