@@ -1,80 +1,3 @@
-import { compress, decompress } from "https://deno.land/x/lz4@0.1.3/mod.ts";
-
-interface Sketches {
-    [lang: string]: {
-        wordSketch: CountMinSketch;
-        phraseSketch: CountMinSketch;
-        hashtagsSketch: CountMinSketch;
-    };
-}
-
-async function saveSketchesToKV(sketches: Sketches) {
-    const sketchesData: { [key: string]: { wordSketch: object, phraseSketch: object, hashtagsSketch: object } } = {};
-    for (const lang in sketches) {
-        sketchesData[lang] = {
-            wordSketch: sketches[lang].wordSketch.toJSON(),
-            phraseSketch: sketches[lang].phraseSketch.toJSON(),
-            hashtagsSketch: sketches[lang].hashtagsSketch.toJSON(),
-        };
-    }
-
-    const compressedData = compress(new TextEncoder().encode(JSON.stringify(sketchesData)));
-    const chunkSize = 65536 - 1000; // Deixar um espaço para metadados
-    const chunks = [];
-
-    for (let i = 0; i < compressedData.length; i += chunkSize) {
-        chunks.push(compressedData.slice(i, i + chunkSize));
-    }
-
-    for (let i = 0; i < chunks.length; i++) {
-        await kv.set([`sketches_chunk_${i}`], chunks[i]);
-    }
-
-    await kv.set(["sketches_chunk_count"], chunks.length).catch(console.error);
-}
-
-async function loadSketchesFromKV(): Promise<Sketches | null> {
-    const chunkCountEntry = await kv.get(["sketches_chunk_count"]);
-    if (!chunkCountEntry.value) return null;
-
-    const chunkCount = chunkCountEntry.value as number;
-    const chunks = [];
-
-    for (let i = 0; i < chunkCount; i++) {
-        const chunkEntry = await kv.get([`sketches_chunk_${i}`]);
-        if (chunkEntry.value) {
-            chunks.push(chunkEntry.value as Uint8Array);
-        }
-    }
-
-    const compressedData = new Uint8Array(chunks.reduce((acc, chunk) => {
-        const newAcc = new Uint8Array(acc.length + chunk.length);
-        newAcc.set(acc);
-        newAcc.set(chunk, acc.length);
-        return newAcc;
-    }, new Uint8Array()));
-    const decompressedData = decompress(compressedData);
-    const sketchesData = JSON.parse(new TextDecoder().decode(decompressedData));
-
-    // Recriar instâncias da classe CountMinSketch
-    const sketches: Sketches = {};
-    for (const lang in sketchesData) {
-        sketches[lang] = {
-            wordSketch: Object.assign(new CountMinSketch(), sketchesData[lang].wordSketch, {
-                ngramsCounter: new Map(Object.entries(sketchesData[lang].wordSketch.ngramsCounter))
-            }),
-            phraseSketch: Object.assign(new CountMinSketch(), sketchesData[lang].phraseSketch, {
-                ngramsCounter: new Map(Object.entries(sketchesData[lang].phraseSketch.ngramsCounter))
-            }),
-            hashtagsSketch: Object.assign(new CountMinSketch(), sketchesData[lang].hashtagsSketch, {
-                ngramsCounter: new Map(Object.entries(sketchesData[lang].hashtagsSketch.ngramsCounter))
-            }),
-        };
-    }
-
-    return sketches;
-}
-
 class CountMinSketch {
     private depth: number;
     private width: number;
@@ -110,35 +33,6 @@ class CountMinSketch {
         this.cleanIntervalId = null;
         this.minCount = minCount; // Minimum count to keep entries
         this.startPeriodicCleaning();
-    }
-
-    toJSON() {
-        return {
-            depth: this.depth,
-            width: this.width,
-            table: this.table,
-            ngramsCounter: Array.from(this.ngramsCounter.entries()),
-            maxDates: this.maxDates,
-            maxAgeInHours: this.maxAgeInHours,
-            similarityThreshold: this.similarityThreshold,
-            cleanInterval: this.cleanInterval,
-            minCount: this.minCount,
-        };
-    }
-
-    static fromJSON(data: { depth: number, width: number, table: number[][], ngramsCounter: [string, { original: string, count: number, dates: Date[] }][], maxDates: number, maxAgeInHours: number, similarityThreshold: number, cleanInterval: number, minCount: number }) {
-        const sketch = new CountMinSketch(
-            data.depth,
-            data.width,
-            data.maxDates,
-            data.maxAgeInHours,
-            data.similarityThreshold,
-            data.cleanInterval,
-            data.minCount
-        );
-        sketch.table = data.table;
-        sketch.ngramsCounter = new Map(data.ngramsCounter);
-        return sketch;
     }
 
     /**
@@ -293,8 +187,6 @@ const sketchesByLang = {
     }
 };
 
-const kv = await Deno.openKv();
-
 /**
  * Update the Count-Min Sketches with new n-grams
  * @param ngrams Object containing the n-grams to be updated
@@ -312,52 +204,24 @@ function updateSketches(ngrams: { words: string[], phrases: string[], hashtags: 
     filteredWords.forEach(ngram => sketchesByLang[lang].wordSketch.update(ngram, date, lang));
     filteredPhrases.forEach(ngram => sketchesByLang[lang].phraseSketch.update(ngram, date, lang));
     filteredHashtags.forEach(ngram => sketchesByLang[lang].hashtagsSketch.update(ngram, date, lang));
-
-    
-    // Save the sketches to KV
-    saveSketchesToKV(sketchesByLang);
 }
 
-async function getTopWords(n = 10, lang: 'pt' | 'en' | 'es') {
-    const sketches = await loadSketchesFromKV();
-    if (!sketches) return [];
-    try {
-        return sketches[lang].wordSketch.getTopNgrams(n);
-    } catch (error) {
-        console.error('Error getting top words:', error);
-        return [];
-    }
+function getTopWords(n = 10, lang: 'pt' | 'en' | 'es') {
+    return sketchesByLang[lang].wordSketch.getTopNgrams(n);
 }
 
-async function getTopPhrases(n = 10, lang: 'pt' | 'en' | 'es') {
-    const sketches = await loadSketchesFromKV();
-    if (!sketches) return [];
-    try {
-        return sketches[lang].phraseSketch.getTopNgrams(n);
-    } catch (error) {
-        console.error('Error getting top phrases:', error);
-        return [];
-    }
+function getTopPhrases(n = 10, lang: 'pt' | 'en' | 'es') {
+    return sketchesByLang[lang].phraseSketch.getTopNgrams(n);
 }
 
-async function getTopHashtags(n = 10, lang: 'pt' | 'en' | 'es') {
-    const sketches = await loadSketchesFromKV();
-    if (!sketches) return [];
-    try {
-        return sketches[lang].hashtagsSketch.getTopNgrams(n);
-    } catch (error) {
-        console.error('Error getting top hashtags:', error);
-        return [];
-    }
+function getTopHashtags(n = 10, lang: 'pt' | 'en' | 'es') {
+    return sketchesByLang[lang].hashtagsSketch.getTopNgrams(n);
 }
 
-async function getTopGlobalWords(n = 10, langToExclude: 'pt' | 'en' | 'es') {
-    const sketches = await loadSketchesFromKV();
-    if (!sketches) return [];
-
-    const allWords = Object.entries(sketches)
+function getTopGlobalWords(n = 10, langToExclude: 'pt' | 'en' | 'es') {
+    const allWords = Object.entries(sketchesByLang)
         .filter(([key]) => key !== langToExclude)
-        .flatMap(([, sketch]) => (sketch as { wordSketch: CountMinSketch }).wordSketch.getTopNgrams(n));
+        .flatMap(([, sketch]) => sketch.wordSketch.getTopNgrams(n));
 
     const wordCounts = new Map<string, number>();
     allWords.forEach(word => {
