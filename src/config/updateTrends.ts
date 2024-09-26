@@ -3,7 +3,7 @@ import { getTrendingTopics } from "../utils/getTrends.ts";
 /**
  * Function to update trends
  */
-export async function updateTrends() {
+async function updateTrends() {
     console.log('Updating time:', new Date());
 
     try {
@@ -25,5 +25,15 @@ export async function updateTrends() {
     }
 }
 
-setInterval(updateTrends, 60000); // 1 minute
+export async function startUpdatingTrends() {
+    while (true) {
+        try {
+            await updateTrends();
+        } catch (error) {
+            console.error('Error in updateTrends function:', error);
+        }
+        await new Promise(resolve => setTimeout(resolve, 60000)); // 1 minute
+    }
+}
+
 
