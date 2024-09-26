@@ -218,9 +218,9 @@ function updateSketches(ngrams: { words: string[], phrases: string[], hashtags: 
 async function getTopWords(n = 10, lang: 'pt' | 'en' | 'es') {
     const sketchesEntry = await kv.get(['sketches']);
     if (!sketchesEntry.value) return [];
-    const sketches = sketchesEntry.value as string;
     try {
-        return JSON.parse(sketches)[lang].wordSketch.getTopNgrams(n);
+        const sketches = JSON.parse(sketchesEntry.value as string);
+        return sketches[lang].wordSketch.getTopNgrams(n);
     } catch (error) {
         console.error('Error getting top words:', error);
         return [];
@@ -230,9 +230,9 @@ async function getTopWords(n = 10, lang: 'pt' | 'en' | 'es') {
 async function getTopPhrases(n = 10, lang: 'pt' | 'en' | 'es') {
     const sketchesEntry = await kv.get(['sketches']);
     if (!sketchesEntry.value) return [];
-    const sketches = sketchesEntry.value as string;
     try {
-        return JSON.parse(sketches)[lang].phraseSketch.getTopNgrams(n);
+        const sketches = JSON.parse(sketchesEntry.value as string); 
+        return sketches[lang].phraseSketch.getTopNgrams(n);
     } catch (error) {
         console.error('Error getting top phrases:', error);
         return [];
@@ -242,9 +242,9 @@ async function getTopPhrases(n = 10, lang: 'pt' | 'en' | 'es') {
 async function getTopHashtags(n = 10, lang: 'pt' | 'en' | 'es') {
     const sketchesEntry = await kv.get(['sketches']);
     if (!sketchesEntry.value) return [];
-    const sketches = sketchesEntry.value as string;
     try {
-        return JSON.parse(sketches)[lang].hashtagsSketch.getTopNgrams(n);
+        const sketches = JSON.parse(sketchesEntry.value as string);
+        return sketches[lang].hashtagsSketch.getTopNgrams(n);
     } catch (error) {
         console.error('Error getting top hashtags:', error);
         return [];
