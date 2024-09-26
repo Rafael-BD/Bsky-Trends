@@ -21,11 +21,10 @@ async function saveSketchesToKV(sketches: Sketches) {
         await kv.set([`sketches_chunk_${i}`], chunks[i]);
     }
 
-    await kv.set(["sketches_chunk_count"], chunks.length);
-    console.log("Sketches saved to KV");
+    await kv.set(["sketches_chunk_count"], chunks.length).catch(console.error);
 }
 
-async function loadSketchesFromKV() {
+async function loadSketchesFromKV(): Promise<Sketches | null> {
     const chunkCountEntry = await kv.get(["sketches_chunk_count"]);
     if (!chunkCountEntry.value) return null;
 
@@ -46,7 +45,19 @@ async function loadSketchesFromKV() {
         return newAcc;
     }, new Uint8Array()));
     const decompressedData = decompress(compressedData);
-    return JSON.parse(new TextDecoder().decode(decompressedData));
+    const sketchesData = JSON.parse(new TextDecoder().decode(decompressedData));
+
+    // Recriar instâncias da classe CountMinSketch
+    const sketches: Sketches = {};
+    for (const lang in sketchesData) {
+        sketches[lang] = {
+            wordSketch: Object.assign(new CountMinSketch(), sketchesData[lang].wordSketch),
+            phraseSketch: Object.assign(new CountMinSketch(), sketchesData[lang].phraseSketch),
+            hashtagsSketch: Object.assign(new CountMinSketch(), sketchesData[lang].hashtagsSketch),
+        };
+    }
+
+    return sketches;
 }
 
 class CountMinSketch {
@@ -286,7 +297,7 @@ async function getTopPhrases(n = 10, lang: 'pt' | 'en' | 'es') {
 }
 
 async function getTopHashtags(n = 10, lang: 'pt' | 'en' | 'es') {
-    const sketches= await loadSketchesFromKV();
+    const sketches = await loadSketchesFromKV();
     if (!sketches) return [];
     try {
         return sketches[lang].hashtagsSketch.getTopNgrams(n);
@@ -297,7 +308,7 @@ async function getTopHashtags(n = 10, lang: 'pt' | 'en' | 'es') {
 }
 
 async function getTopGlobalWords(n = 10, langToExclude: 'pt' | 'en' | 'es') {
-    const sketches = await kv.get(['sketches']);
+    const sketches = await loadSketchesFromKV();
     if (!sketches) return [];
 
     const allWords = Object.entries(sketches)
