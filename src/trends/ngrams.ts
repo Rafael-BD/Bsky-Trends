@@ -1,3 +1,54 @@
+import { compress, decompress } from "https://deno.land/x/lz4@0.1.3/mod.ts";
+
+interface Sketches {
+    [lang: string]: {
+        wordSketch: CountMinSketch;
+        phraseSketch: CountMinSketch;
+        hashtagsSketch: CountMinSketch;
+    };
+}
+
+async function saveSketchesToKV(sketches: Sketches) {
+    const compressedData = compress(new TextEncoder().encode(JSON.stringify(sketches)));
+    const chunkSize = 65536 - 1000; // Deixar um espaço para metadados
+    const chunks = [];
+
+    for (let i = 0; i < compressedData.length; i += chunkSize) {
+        chunks.push(compressedData.slice(i, i + chunkSize));
+    }
+
+    for (let i = 0; i < chunks.length; i++) {
+        await kv.set([`sketches_chunk_${i}`], chunks[i]);
+    }
+
+    await kv.set(["sketches_chunk_count"], chunks.length);
+    console.log("Sketches saved to KV");
+}
+
+async function loadSketchesFromKV() {
+    const chunkCountEntry = await kv.get(["sketches_chunk_count"]);
+    if (!chunkCountEntry.value) return null;
+
+    const chunkCount = chunkCountEntry.value as number;
+    const chunks = [];
+
+    for (let i = 0; i < chunkCount; i++) {
+        const chunkEntry = await kv.get([`sketches_chunk_${i}`]);
+        if (chunkEntry.value) {
+            chunks.push(chunkEntry.value as Uint8Array);
+        }
+    }
+
+    const compressedData = new Uint8Array(chunks.reduce((acc, chunk) => {
+        const newAcc = new Uint8Array(acc.length + chunk.length);
+        newAcc.set(acc);
+        newAcc.set(chunk, acc.length);
+        return newAcc;
+    }, new Uint8Array()));
+    const decompressedData = decompress(compressedData);
+    return JSON.parse(new TextDecoder().decode(decompressedData));
+}
+
 class CountMinSketch {
     private depth: number;
     private width: number;
@@ -208,18 +259,14 @@ function updateSketches(ngrams: { words: string[], phrases: string[], hashtags: 
     filteredHashtags.forEach(ngram => sketchesByLang[lang].hashtagsSketch.update(ngram, date, lang));
 
     
-    kv.set(['sketches'], JSON.stringify(sketchesByLang)).then(() => {
-        console.log('Sketches saved to KV');
-    }).catch((error) => {
-        console.error('Error saving sketches to KV:', error);
-    });
+    // Save the sketches to KV
+    saveSketchesToKV(sketchesByLang);
 }
 
 async function getTopWords(n = 10, lang: 'pt' | 'en' | 'es') {
-    const sketchesEntry = await kv.get(['sketches']);
-    if (!sketchesEntry.value) return [];
+    const sketches = await loadSketchesFromKV();
+    if (!sketches) return [];
     try {
-        const sketches = JSON.parse(sketchesEntry.value as string);
         return sketches[lang].wordSketch.getTopNgrams(n);
     } catch (error) {
         console.error('Error getting top words:', error);
@@ -228,10 +275,9 @@ async function getTopWords(n = 10, lang: 'pt' | 'en' | 'es') {
 }
 
 async function getTopPhrases(n = 10, lang: 'pt' | 'en' | 'es') {
-    const sketchesEntry = await kv.get(['sketches']);
-    if (!sketchesEntry.value) return [];
+    const sketches = await loadSketchesFromKV();
+    if (!sketches) return [];
     try {
-        const sketches = JSON.parse(sketchesEntry.value as string); 
         return sketches[lang].phraseSketch.getTopNgrams(n);
     } catch (error) {
         console.error('Error getting top phrases:', error);
@@ -240,10 +286,9 @@ async function getTopPhrases(n = 10, lang: 'pt' | 'en' | 'es') {
 }
 
 async function getTopHashtags(n = 10, lang: 'pt' | 'en' | 'es') {
-    const sketchesEntry = await kv.get(['sketches']);
-    if (!sketchesEntry.value) return [];
+    const sketches= await loadSketchesFromKV();
+    if (!sketches) return [];
     try {
-        const sketches = JSON.parse(sketchesEntry.value as string);
         return sketches[lang].hashtagsSketch.getTopNgrams(n);
     } catch (error) {
         console.error('Error getting top hashtags:', error);
@@ -252,15 +297,9 @@ async function getTopHashtags(n = 10, lang: 'pt' | 'en' | 'es') {
 }
 
 async function getTopGlobalWords(n = 10, langToExclude: 'pt' | 'en' | 'es') {
-    const sketchesEntry = await kv.get(['sketches']);
-    if (!sketchesEntry.value) return [];
-    let sketches = null;
-    try {
-        sketches = JSON.parse(sketchesEntry.value as string);
-    } catch (error) {
-        console.error('Error getting top global words:', error);
-        return [];
-    }
+    const sketches = await kv.get(['sketches']);
+    if (!sketches) return [];
+
     const allWords = Object.entries(sketches)
         .filter(([key]) => key !== langToExclude)
         .flatMap(([, sketch]) => (sketch as { wordSketch: CountMinSketch }).wordSketch.getTopNgrams(n));
