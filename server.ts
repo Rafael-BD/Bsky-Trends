@@ -27,8 +27,10 @@ import { getTrendingTopics } from "./src/utils/getTrends.ts";
 // }
 
 
-async function startServices() {
-    await Promise.all([ createWebSocketClient()]);
-}
+// async function startServices() {
+//     await Promise.all([ createWebSocketClient()]);
+// }
 
-startServices();
+// startServices();
+
+createWebSocketClient()
