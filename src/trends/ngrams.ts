@@ -187,6 +187,8 @@ const sketchesByLang = {
     }
 };
 
+const kv = await Deno.openKv();
+
 /**
  * Update the Count-Min Sketches with new n-grams
  * @param ngrams Object containing the n-grams to be updated
@@ -204,22 +206,33 @@ function updateSketches(ngrams: { words: string[], phrases: string[], hashtags: 
     filteredWords.forEach(ngram => sketchesByLang[lang].wordSketch.update(ngram, date, lang));
     filteredPhrases.forEach(ngram => sketchesByLang[lang].phraseSketch.update(ngram, date, lang));
     filteredHashtags.forEach(ngram => sketchesByLang[lang].hashtagsSketch.update(ngram, date, lang));
+
+    // Save the sketches to KV
+    kv.set(['sketches'], sketchesByLang).then(() => {
+        console.log('Sketches saved to KV');
+    }).catch((error) => {
+        console.error('Error saving sketches to KV:', error);
+    });
 }
 
-function getTopWords(n = 10, lang: 'pt' | 'en' | 'es') {
-    return sketchesByLang[lang].wordSketch.getTopNgrams(n);
+async function getTopWords(n = 10, lang: 'pt' | 'en' | 'es') {
+    const sketches = await kv.get(['sketches']) as unknown as { [key: string]: typeof sketchesByLang['pt'] | typeof sketchesByLang['en'] | typeof sketchesByLang['es'] };
+    return sketches[lang].wordSketch.getTopNgrams(n);
 }
 
-function getTopPhrases(n = 10, lang: 'pt' | 'en' | 'es') {
-    return sketchesByLang[lang].phraseSketch.getTopNgrams(n);
+async function getTopPhrases(n = 10, lang: 'pt' | 'en' | 'es') {
+    const sketches = await kv.get(['sketches']) as unknown as { [key: string]: typeof sketchesByLang['pt'] | typeof sketchesByLang['en'] | typeof sketchesByLang['es'] };
+    return sketches[lang].phraseSketch.getTopNgrams(n);
 }
 
-function getTopHashtags(n = 10, lang: 'pt' | 'en' | 'es') {
-    return sketchesByLang[lang].hashtagsSketch.getTopNgrams(n);
+async function getTopHashtags(n = 10, lang: 'pt' | 'en' | 'es') {
+    const sketches = await kv.get(['sketches']) as unknown as { [key: string]: typeof sketchesByLang['pt'] | typeof sketchesByLang['en'] | typeof sketchesByLang['es'] };
+    return sketches[lang].hashtagsSketch.getTopNgrams(n);
 }
 
-function getTopGlobalWords(n = 10, langToExclude: 'pt' | 'en' | 'es') {
-    const allWords = Object.entries(sketchesByLang)
+async function getTopGlobalWords(n = 10, langToExclude: 'pt' | 'en' | 'es') {
+    const sketches = await kv.get(['sketches']) as unknown as { [key: string]: typeof sketchesByLang['pt'] | typeof sketchesByLang['en'] | typeof sketchesByLang['es'] };
+    const allWords = Object.entries(sketches)
         .filter(([key]) => key !== langToExclude)
         .flatMap(([, sketch]) => sketch.wordSketch.getTopNgrams(n));
 
