@@ -4,8 +4,23 @@ import { getTrendingTopics } from "../utils/getTrends.ts";
 export default function cron() {
     Deno.cron("Trends update", { minute: { every: 20 } }, () => {
         console.log('Updating time:', new Date());
-        getTrendingTopics(15, 'pt');
-        getTrendingTopics(15, 'en');
-        getTrendingTopics(15, 'es');
+        
+        try {
+            getTrendingTopics(15, 'pt');
+        } catch (error) {
+            console.error('Error updating PT trends:', error);
+        }
+
+        try {
+            getTrendingTopics(15, 'en');
+        } catch (error) {
+            console.error('Error updating EN trends:', error);
+        }
+
+        try {
+            getTrendingTopics(15, 'es');
+        } catch (error) {
+            console.error('Error updating ES trends:', error);
+        }
     });
 };
