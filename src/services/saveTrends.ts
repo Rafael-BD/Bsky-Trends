@@ -21,11 +21,23 @@ interface Trend {
 export const saveTrend = async (trend: Trend, lang: string) => {
     const { data, error } = await supabaseSvc
         .from('trends')
-        .upsert({trend, lang}, {onConflict: 'lang'});
+        .upsert({trend, lang}, {onConflict: 'trend'});
 
     if (error) {
         console.error('Error saving trend:', error);
     } else {
         console.log('Trend saved or updated:', data);
     }
-};
+}
+
+// export const saveTrendDev = async (trend: Trend, lang: string) => {
+//     const { data, error } = await supabaseSvc
+//         .from('trends_dev')
+//         .upsert({trend, lang}, {onConflict: 'lang'});
+
+//     if (error) {
+//         console.error('Error saving trend:', error);
+//     } else {
+//         console.log('Trend saved or updated:', data);
+//     }
+// };

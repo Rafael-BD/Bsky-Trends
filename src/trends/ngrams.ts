@@ -98,7 +98,7 @@ class CountMinSketch {
      * @param _lang Language of the item
      */
     update(item: string, date: Date, _lang: string) {
-        // console.log('Updating item:', item, 'at', date, 'for lang:', _lang);
+        console.log('Updating item:', item, 'at', date, 'for lang:', _lang);
         const lowerCaseItem = item.toLowerCase();
 
         let similarKey = lowerCaseItem;
