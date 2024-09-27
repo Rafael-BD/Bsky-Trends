@@ -83,12 +83,13 @@ class CountMinSketch {
             .download(`${lang}_${type}_checkpoint.lz4`);
 
         if (error) {
-            console.error(`Error loading ${type} checkpoint from Supabase:`, error);
+            console.log('No checkpoint found for', lang, type);
             return null;
         } else {
             const compressedData = await data.arrayBuffer();
             const decompressedData = decompress(new Uint8Array(compressedData));
             const jsonData = new TextDecoder().decode(decompressedData);
+            console.log('Checkpoint loaded from Supabase:', lang, type);
             return CountMinSketch.fromJSON(JSON.parse(jsonData));
         }
     }
@@ -133,7 +134,7 @@ class CountMinSketch {
 
     update(item: string, date: Date, _lang: string) {
         const lowerCaseItem = item.toLowerCase();
-
+        console.log('Updating:', lowerCaseItem);
         let similarKey = lowerCaseItem;
         for (const key of this.ngramsCounter.keys()) {
             if (this.similarity(lowerCaseItem, key) >= this.similarityThreshold) {
@@ -204,14 +205,9 @@ const sketchesByLang = {
         phraseSketch: await CountMinSketch.loadFromSupabase("en", "phraseSketch") || new CountMinSketch(),
         hashtagsSketch: await CountMinSketch.loadFromSupabase("en", "hashtagsSketch") || new CountMinSketch(),
     },
-    es: {
-        wordSketch: await CountMinSketch.loadFromSupabase("es", "wordSketch") || new CountMinSketch(),
-        phraseSketch: await CountMinSketch.loadFromSupabase("es", "phraseSketch") || new CountMinSketch(),
-        hashtagsSketch: await CountMinSketch.loadFromSupabase("es", "hashtagsSketch") || new CountMinSketch(),
-    }
 };
 
-function updateSketches(ngrams: { words: string[], phrases: string[], hashtags: string[] }, date: Date, lang: 'pt' | 'en' | 'es') {
+function updateSketches(ngrams: { words: string[], phrases: string[], hashtags: string[] }, date: Date, lang: 'pt' | 'en') {
     const filterNgrams = (ngrams: string[]) => ngrams.filter(ngram => ngram.trim().length > 1);
 
     const filteredWords = filterNgrams(ngrams.words);
@@ -227,26 +223,26 @@ const saveInterval = 5 * 60 * 1000; // 5 minutos em milissegundos
 
 setInterval(async () => {
     for (const lang in sketchesByLang) {
-        const language = lang as 'pt' | 'en' | 'es';
+        const language = lang as 'pt' | 'en';
         await sketchesByLang[language].wordSketch.saveToSupabase(language, "wordSketch");
         await sketchesByLang[language].phraseSketch.saveToSupabase(language, "phraseSketch");
         await sketchesByLang[language].hashtagsSketch.saveToSupabase(language, "hashtagsSketch");
     }
 }, saveInterval);
 
-function getTopWords(n = 10, lang: 'pt' | 'en' | 'es') {
+function getTopWords(n = 10, lang: 'pt' | 'en') {
     return sketchesByLang[lang].wordSketch.getTopNgrams(n);
 }
 
-function getTopPhrases(n = 10, lang: 'pt' | 'en' | 'es') {
+function getTopPhrases(n = 10, lang: 'pt' | 'en') {
     return sketchesByLang[lang].phraseSketch.getTopNgrams(n);
 }
 
-function getTopHashtags(n = 10, lang: 'pt' | 'en' | 'es') {
+function getTopHashtags(n = 10, lang: 'pt' | 'en') {
     return sketchesByLang[lang].hashtagsSketch.getTopNgrams(n);
 }
 
-function getTopGlobalWords(n = 10, langToExclude: 'pt' | 'en' | 'es') {
+function getTopGlobalWords(n = 10, langToExclude: 'pt' | 'en') {
     const allWords = Object.entries(sketchesByLang)
         .filter(([key]) => key !== langToExclude)
         .flatMap(([, sketch]) => (sketch as { wordSketch: CountMinSketch }).wordSketch.getTopNgrams(n));

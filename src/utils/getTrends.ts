@@ -14,10 +14,10 @@ export async function getTrendingTopics(limit: number = 10, lang: string = 'pt',
     // Function to get top topics with retries
     async function getTopTopicsWithRetries(retries: number = 3, delay: number = 10000) {
         for (let attempt = 0; attempt < retries; attempt++) {
-            const topWords = getTopWords(wordLimit, lang as 'pt' | 'en' | 'es');
-            const topPhrases = getTopPhrases(phraseLimit, lang as 'pt' | 'en' | 'es');
-            const topHashtags = getTopHashtags(hashtagLimit, lang as 'pt' | 'en' | 'es');
-            const topGlobalWords = getTopGlobalWords(globalWordLimit * 2, lang as 'pt' | 'en' | 'es');
+            const topWords = getTopWords(wordLimit, lang as 'pt' | 'en');
+            const topPhrases = getTopPhrases(phraseLimit, lang as 'pt' | 'en');
+            const topHashtags = getTopHashtags(hashtagLimit, lang as 'pt' | 'en');
+            const topGlobalWords = getTopGlobalWords(globalWordLimit * 2, lang as 'pt' | 'en');
 
             // Check if all arrays are not empty
             if (topWords.length >= minCount || topPhrases.length >= minCount || topHashtags.length >= minCount || topGlobalWords.length >= minCount) {

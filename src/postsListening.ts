@@ -36,7 +36,7 @@ async function createWebSocketClient() {
                         if (diffInHours > 12) return; // Ignore posts older than 12 hours
 
                         const lang = payload.langs[0];
-                        if(lang !== 'pt' && lang !== 'en' && lang !== 'es') return;
+                        if(lang !== 'pt' && lang !== 'en') return;
 
                         const txt = payload.text.trim();
                     
@@ -49,7 +49,7 @@ async function createWebSocketClient() {
                         const phrases = filterSentences(extractSentences(processedText));
                         const words = filterWords(extractWords(processedText), lang);
                         const hashtags = filterWords(extractHashtags(processedText), lang);
-                        updateSketches({ words, phrases, hashtags }, date, lang as 'pt' | 'en' | 'es');
+                        updateSketches({ words, phrases, hashtags }, date, lang as 'pt' | 'en');
                 
                     });
                 }
