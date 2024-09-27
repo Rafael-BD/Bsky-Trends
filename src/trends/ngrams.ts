@@ -134,7 +134,7 @@ class CountMinSketch {
 
     update(item: string, date: Date, _lang: string) {
         const lowerCaseItem = item.toLowerCase();
-        console.log('Updating:', lowerCaseItem);
+        // console.log('Updating:', lowerCaseItem);
         let similarKey = lowerCaseItem;
         for (const key of this.ngramsCounter.keys()) {
             if (this.similarity(lowerCaseItem, key) >= this.similarityThreshold) {
