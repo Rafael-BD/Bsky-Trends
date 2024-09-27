@@ -1,7 +1,7 @@
 import { supabaseSvc as supabase } from "../config/supabase.ts";
 import { compress, decompress } from "https://deno.land/x/lz4@0.1.3/mod.ts";
 import { updateTrends } from "../services/updateTrendsDB.ts";
-const isDev = Deno.env.get('DEV') === 'true';
+// const isDev = Deno.env.get('DEV') === 'true';
 
 class CountMinSketch {
     private depth: number;
@@ -134,7 +134,7 @@ class CountMinSketch {
 
     update(item: string, date: Date, _lang: string) {
         const lowerCaseItem = item.toLowerCase();
-        // console.log('Updating:', lowerCaseItem);
+        console.log('Updating:', lowerCaseItem);
         let similarKey = lowerCaseItem;
         for (const key of this.ngramsCounter.keys()) {
             if (this.similarity(lowerCaseItem, key) >= this.similarityThreshold) {

@@ -35,4 +35,3 @@ async function startServices() {
 startServices().then(() => {
     console.log('Server stopped after', (new Date().getTime() - startupTime) / 1000, 'seconds');
 });
-

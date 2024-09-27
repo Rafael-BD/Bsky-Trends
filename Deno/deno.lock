@@ -16,6 +16,7 @@
       "npm:@xenova/transformers@2.17.2": "npm:@xenova/transformers@2.17.2",
       "npm:atproto-firehose": "npm:atproto-firehose@0.2.2_bufferutil@4.0.8_utf-8-validate@6.0.4",
       "npm:atproto-firehose@0.2.2": "npm:atproto-firehose@0.2.2_bufferutil@4.0.8_utf-8-validate@6.0.4",
+      "npm:cbor-x": "npm:cbor-x@1.6.0",
       "npm:compromise": "npm:compromise@14.14.0",
       "npm:compromise@14.14.0": "npm:compromise@14.14.0",
       "npm:firebase": "npm:firebase@10.8.0_@firebase+app@0.9.27_@firebase+app-compat@0.2.27_@firebase+app-types@0.9.0",
@@ -3206,6 +3207,8 @@
     "https://deno.land/x/oak_rate_limit/mod.ts": "https://deno.land/x/oak_rate_limit@v0.1.1/mod.ts"
   },
   "remote": {
+    "https://cdn.skypack.dev/-/pako@v2.1.0-45rMaYN3B7tIGOhONLdV/dist=es2019,mode=imports/optimized/pako.js": "0e70f8f81aaa277e359308e2f07d560fd6c9f98e2bb8968301f237bf7f34c1a8",
+    "https://cdn.skypack.dev/pako": "cc52bc53fdee35b4854461706ea3655b8bda1a3b48ed170f16d0050f6b8534d5",
     "https://deno.land/std@0.152.0/_util/assert.ts": "e94f2eb37cebd7f199952e242c77654e43333c1ac4c5c700e929ea3aa5489f74",
     "https://deno.land/std@0.152.0/_util/os.ts": "3b4c6e27febd119d36a416d7a97bd3b0251b77c88942c8f16ee5953ea13e2e49",
     "https://deno.land/std@0.152.0/async/deferred.ts": "bc18e28108252c9f67dfca2bbc4587c3cbf3aeb6e155f8c864ca8ecff992b98a",

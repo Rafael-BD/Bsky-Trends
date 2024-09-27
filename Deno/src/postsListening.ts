@@ -20,6 +20,7 @@ import { extractHashtags } from "./trends/hashtags.ts";
 function createWebSocketClient(): Promise<void> {
     return new Promise((reject) => {
         async function connectToWebSocket() {
+            console.log("Listening to posts from Bsky network...");
             try {
                 const client = subscribeRepos(`wss://bsky.network`, { decodeRepoOps: true });
                 client.on('message', (m: SubscribeReposMessage) => {
