@@ -27,9 +27,12 @@ async function startHttpServer() {
     }
 }
 
+const startupTime = new Date().getTime();
 async function startServices() {
     await Promise.all([ createWebSocketClient(), startHttpServer() ]);
 }
 
-startServices();
+startServices().then(() => {
+    console.log('Server stopped after', (new Date().getTime() - startupTime) / 1000, 'seconds');
+});
 
