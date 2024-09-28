@@ -3,7 +3,7 @@
     <div style="font-size: 14px; font-weight: bold;">
         🌐 Other languages:
     </div>
-    <a href="https://github.com/Rafael-BD/Bsky-Trends/blob/main/assets/README-PT.md">• Português</a>
+    <a href="https://github.com/Rafael-BD/Bsky-Trends/blob/main/assets/README-PT.MD">• Português</a>
 </div>
 
 ## Description
