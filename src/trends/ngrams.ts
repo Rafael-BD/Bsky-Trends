@@ -1,5 +1,5 @@
 import { supabaseSvc as supabase } from "../config/supabase.ts";
-import { compress, decompress } from "https://deno.land/x/lz4@0.1.3/mod.ts";
+import { compress, uncompress } from "lz4-napi";
 import { updateTrends } from "../services/updateTrendsDB.ts";
 // const isDev = Deno.env.get('DEV') === 'true';
 
@@ -61,11 +61,15 @@ class CountMinSketch {
     }
 
     async saveToSupabase(lang: string, type: string) {
+        if (!supabase) {
+            console.warn('Supabase client is not initialized');
+            return null;
+        }
         const data = JSON.stringify(this.toJSON());
-        const compressedData = compress(new TextEncoder().encode(data));
+        const compressedData = compress(Buffer.from(new TextEncoder().encode(data)));
         const { error } = await supabase.storage
             .from("checkpoints")
-            .upload(`${lang}_${type}_checkpoint.lz4`, new File([compressedData], `${lang}_${type}_checkpoint.lz4`), {
+            .upload(`${lang}_${type}_checkpoint.lz4`, new File([await compressedData], `${lang}_${type}_checkpoint.lz4`), {
                 upsert: true,
             });
 
@@ -78,6 +82,11 @@ class CountMinSketch {
     }
 
     static async loadFromSupabase(lang: string, type: string): Promise<CountMinSketch | null> {
+        if (!supabase) {
+            console.warn('Supabase client is not initialized');
+            return null;
+        }
+
         const { data, error } = await supabase.storage
             .from("checkpoints")
             .download(`${lang}_${type}_checkpoint.lz4`);
@@ -87,13 +96,14 @@ class CountMinSketch {
             return null;
         } else {
             const compressedData = await data.arrayBuffer();
-            const decompressedData = decompress(new Uint8Array(compressedData));
+            const decompressedData = await uncompress(Buffer.from(new Uint8Array(compressedData)));
             const jsonData = new TextDecoder().decode(decompressedData);
             console.log('Checkpoint loaded from Supabase:', lang, type);
             return CountMinSketch.fromJSON(JSON.parse(jsonData));
         }
     }
 
+    // Generate hash functions to be used in the Count-Min Sketch algorithm
     private generateHashFunctions(depth: number, width: number): Array<(str: string) => number> {
         const hashFunctions = [];
         for (let i = 0; i < depth; i++) {
@@ -109,6 +119,7 @@ class CountMinSketch {
         return hashFunctions;
     }
 
+    // Algorithm to calculate the Levenshtein distance between two strings (used to calculate similarity)
     private levenshtein(a: string, b: string): number {
         const matrix = Array.from({ length: a.length + 1 }, () => Array(b.length + 1).fill(0));
         for (let i = 0; i <= a.length; i++) matrix[i][0] = i;
@@ -126,6 +137,7 @@ class CountMinSketch {
         return matrix[a.length][b.length];
     }
 
+    // Calculate the similarity between two strings for merging similar words/phrases
     private similarity(a: string, b: string): number {
         const maxLen = Math.max(a.length, b.length);
         if (maxLen === 0) return 1.0;
@@ -134,7 +146,7 @@ class CountMinSketch {
 
     update(item: string, date: Date, _lang: string) {
         const lowerCaseItem = item.toLowerCase();
-        console.log('Updating:', lowerCaseItem);
+        // console.log('Updating:', lowerCaseItem);
         let similarKey = lowerCaseItem;
         for (const key of this.ngramsCounter.keys()) {
             if (this.similarity(lowerCaseItem, key) >= this.similarityThreshold) {
@@ -159,6 +171,7 @@ class CountMinSketch {
         }
     }
 
+    // Get the top N n-grams (top words, phrases, hashtags, etc.)
     getTopNgrams(n = 10): Array<{ item: string, count: number }> {
         const now = new Date();
         return Array.from(this.ngramsCounter.entries())
@@ -172,6 +185,7 @@ class CountMinSketch {
             .map(entry => ({ item: entry.item, count: entry.count }));
     }
 
+    // Clean old entries from the n-grams counter (entries with count < minCount and older than maxAgeInHours)
     private cleanOldEntries() {
         const now = new Date();
         for (const [key, value] of this.ngramsCounter.entries()) {
@@ -207,6 +221,7 @@ const sketchesByLang = {
     },
 };
 
+
 function updateSketches(ngrams: { words: string[], phrases: string[], hashtags: string[] }, date: Date, lang: 'pt' | 'en') {
     const filterNgrams = (ngrams: string[]) => ngrams.filter(ngram => ngram.trim().length > 1);
 
@@ -219,7 +234,7 @@ function updateSketches(ngrams: { words: string[], phrases: string[], hashtags: 
     filteredHashtags.forEach(ngram => sketchesByLang[lang].hashtagsSketch.update(ngram, date, lang));
 }
 
-const saveInterval = 5 * 60 * 1000; // 5 minutos em milissegundos
+const saveInterval = 5 * 60 * 1000; // 5 minutes
 
 setInterval(async () => {
     for (const lang in sketchesByLang) {
@@ -242,6 +257,7 @@ function getTopHashtags(n = 10, lang: 'pt' | 'en') {
     return sketchesByLang[lang].hashtagsSketch.getTopNgrams(n);
 }
 
+// Get the top global words (words that are trending in the other languages)
 function getTopGlobalWords(n = 10, langToExclude: 'pt' | 'en') {
     const allWords = Object.entries(sketchesByLang)
         .filter(([key]) => key !== langToExclude)

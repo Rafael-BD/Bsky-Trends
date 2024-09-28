@@ -1,26 +1,22 @@
-import { GoogleGenerativeAI } from 'npm:@google/generative-ai';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import contextPrompt from '../assets/contextPrompt.js';
-import { load } from "https://deno.land/std@0.214.0/dotenv/mod.ts";
+import 'dotenv/config';
 
-const env = await load();
-
-const key = env['GOOGLE_API_KEY'] || Deno.env.get('GOOGLE_API_KEY');
+const key = process.env.GOOGLE_API_KEY;
 const allowedCategories = ["science", "music", "politics", "entertainment", "sports", "technology", "health", "none", "lgbt", "economy", "education", "environment", "food", "lifestyle", "religion", "social", "travel"];
 
-if (!key) {
-    console.error("API Key not found");
-}
 
-const genAI = new GoogleGenerativeAI(key);
+let genAI = null;
 let model = null;
 
 try {
+    genAI = new GoogleGenerativeAI(key);
     model = genAI.getGenerativeModel({
         model: 'models/gemini-1.5-flash',
         systemInstruction: contextPrompt
     });
 } catch (error) {
-    console.error("Error loading model: ", error);
+    console.warn("Gemini model not loaded: ", error);
 }
 
 /**
@@ -30,6 +26,10 @@ try {
  */
 function classifyText(topics) {
     return new Promise((resolve) => {
+        if(!key || !model || !genAI) {
+            console.warn("Model not loaded");
+            return resolve(topics.map(() => 'none'));
+        }
         const data = {
             prompt: topics
         }

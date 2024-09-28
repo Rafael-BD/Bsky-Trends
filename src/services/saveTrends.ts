@@ -1,6 +1,7 @@
 import { supabaseSvc } from "../config/supabase.ts";
+import 'dotenv/config';
 
-const isDev = Deno.env.get('DEV') === 'true';
+const isDev = process.env.DEV === 'true';
 
 interface TrendItem {
     topic: string;
@@ -21,6 +22,10 @@ interface Trend {
  * @param lang Language of the trend
  */
 const saveTrendProd = async (trend: Trend, lang: string) => {
+    if(!supabaseSvc) {
+        console.warn('Supabase not initialized');
+        return;
+    }
     // Se o trend não tiver itens nas listas, não salva
     if (trend.words.length === 0 && trend.phrases.length === 0 && trend.hashtags.length === 0 && trend.globalWords.length === 0) {
         console.warn('Empty trend, not saving:', lang);
@@ -39,7 +44,11 @@ const saveTrendProd = async (trend: Trend, lang: string) => {
     }
 }
 
-export const saveTrendDev = async (trend: Trend, lang: string) => {
+const saveTrendDev = async (trend: Trend, lang: string) => {
+    if(!supabaseSvc) {
+        console.warn('Supabase not initialized');
+        return;
+    }
     const updated_at = new Date().toISOString();
     const { error } = await supabaseSvc
         .from('trends_dev')
@@ -53,4 +62,5 @@ export const saveTrendDev = async (trend: Trend, lang: string) => {
     }
 };
 
-export const saveTrend = isDev ? saveTrendDev : saveTrendProd;
+// export const saveTrend = isDev ? saveTrendDev : saveTrendProd; /* create a table in supabase called trends_dev if you want to separate the dev and prod data */
+export const saveTrend = saveTrendProd;

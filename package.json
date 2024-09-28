@@ -2,10 +2,15 @@
   "name": "trends",
   "module": "server.ts",
   "type": "module",
+  "scripts": {
+    "start": "npx tsx server.ts"
+  },
   "devDependencies": {
     "@types/bun": "latest",
     "@types/cors": "^2.8.17",
-    "@types/express": "^5.0.0"
+    "@types/express": "^5.0.0",
+    "tsx": "^4.19.1",
+    "ts-node": "^10.9.2"
   },
   "peerDependencies": {
     "typescript": "^5.0.0"

@@ -1,4 +1,3 @@
-// deno-lint-ignore-file no-explicit-any
 // import { filterSentences, filterWords } from "../utils/filter.ts";
 // import { extractSentences } from "./sentences.ts";
 // import { extractWords } from "./words.ts";

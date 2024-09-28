@@ -12,7 +12,6 @@ This project extracts real-time post trends and stores them in a database. The p
 
 ## Technologies Used
 
-- **Deno**: Runtime for JavaScript and TypeScript.
 - **Supabase**: Database to store the trends.
 - **Compromise**: NLP library for text processing.
 - **Google Gemini**: Generative AI API to classify topics.
@@ -28,9 +27,9 @@ This project extracts real-time post trends and stores them in a database. The p
 
 ## Requirements
 
-- **Deno**: Make sure you have Deno installed. You can install Deno by following the instructions [here](https://docs.deno.com/runtime/).
-- **Supabase**: Set up an account on [Supabase](https://supabase.com/) and obtain the necessary credentials.
-- **Google Gemini API Key**: Set up an account on [Google Cloud](https://cloud.google.com/) and create a project with the _Generative Language API_ enabled and obtain the API key.
+- **Node.js**: Install [Node.js](https://nodejs.org/) to run the project.
+- **Supabase (optional)**: Set up an account on [Supabase](https://supabase.com/) and obtain the necessary credentials.
+- **Google Gemini API Key (optional)**: Set up an account on [Google Cloud](https://cloud.google.com/) and create a project with the _Generative Language API (Gemini API)_ enabled and obtain the API key from https://aistudio.google.com/app/apikey.
 
 The use of **Supabase** is optional and **Google Gemini** is used only to classify topics. You can replace these services with others of your choice.
 
@@ -49,40 +48,38 @@ The use of **Supabase** is optional and **Google Gemini** is used only to classi
     SUPABASE_URL=your_supabase_url
     SVC_KEY=your_supabase_key
     GOOGLE_API_KEY=your_google_api_key
+    DEV=true # Set to false in production
     ```
+3. Create a Supabase table named `trends` with the following columns:
+
+    - `id`
+    - `trend` (jsonb)
+    - `lang` (text)
+    - `updated_at` (TIMESTAMPZ)
+4. Create a Supabase Storage bucket named `checkpoints` to store the trends checkpoints that are used to the server to recover the trends in case of a restart.
 
 ## Usage
 
-1. Start the WebSocket client to listen to posts:
+1. Install the dependencies:
 
     ```sh
-    deno run dev 
+    npm install
+    ```
+    or
+    ```sh
+    bun install
     ```
 
-2. To get the current trends, uncomment line 3 in the `server.ts` file to start the HTTP server:
-    ```ts
-    // const app = new Application();
+2. Start the WebSocket client to listen to posts:
 
-    // const router = new Router();
-
-    // router.get("/trending", async (ctx) => {
-    //     const trends = await getTrendingTopics(20, 'pt');
-    //     ctx.response.body = trends;
-    // });
-
-
-    // // Middleware and routes
-    // app.use(oakCors({ origin: "*" }));
-    // app.use(router.routes());
-    // app.use(router.allowedMethods());
-
-    // console.log("App Operations Backend running on http://localhost:8003");
-
-    // // Function to run the HTTP server
-    // async function startHttpServer() {
-    //     await app.listen({ port: 8003 });
-    // }
+    ```sh
+    npm run start
     ```
+    or
+    ```sh
+    bun server.ts
+    ```
+
     Now make GET requests to `http://localhost:8003/trending` to get the trends.
 
 ## Feature Explanation
@@ -101,7 +98,7 @@ The extracted topics are classified using Google Gemini AI. The classification i
 
 ### Trend Storage
 
-The trends are stored in Supabase. The storage is done through the `saveTrend` function.
+The trends are stored in Supabase. The storage is done through the `services/saveTrends.ts` file.
 
 <!-- ### Parallel Processing
 

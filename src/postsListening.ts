@@ -57,16 +57,16 @@ async function createWebSocketClient(): Promise<void> {
             });
 
             client.on('error', (e) => {
-                console.error('Erro na conexão WebSocket:', e);
+                console.error('Error in WebSocket connection:', e);
                 setTimeout(() => connectToWebSocket(), 5000);
             });
 
             client.on('close', () => {
-                console.error('Conexão WebSocket fechada');
+                console.error('WebSocket connection closed. Reconnecting...');
                 setTimeout(() => connectToWebSocket(), 1000);
             });
         } catch (error) {
-            console.error('Erro na conexão WebSocket:', error);
+            console.error('Error in WebSocket connection:', error);
             setTimeout(() => connectToWebSocket(), 5000);
         }
     }
