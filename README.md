@@ -104,6 +104,10 @@ The trends are stored in Supabase. The storage is done through the `services/sav
 
 The project uses a pool of workers to process posts efficiently. The worker pool is implemented in the `workerPool.ts` file. -->
 
+## Public API
+
+The project also has a public API to get the trends. The API documentation is available at https://github.com/Rafael-BD/Bsky-Trends-API.
+
 ## Contribution
 
 Contributions are welcome! Feel free to open issues and pull requests.
