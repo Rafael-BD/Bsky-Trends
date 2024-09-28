@@ -234,7 +234,7 @@ function updateSketches(ngrams: { words: string[], phrases: string[], hashtags: 
     filteredHashtags.forEach(ngram => sketchesByLang[lang].hashtagsSketch.update(ngram, date, lang));
 }
 
-const saveInterval = 5 * 60 * 1000; // 5 minutes
+const saveInterval = 20 * 60 * 1000; // 20 minutes
 
 setInterval(async () => {
     for (const lang in sketchesByLang) {
