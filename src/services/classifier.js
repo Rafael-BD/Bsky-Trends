@@ -12,7 +12,7 @@ let model = null;
 try {
     genAI = new GoogleGenerativeAI(key);
     model = genAI.getGenerativeModel({
-        model: 'models/gemini-1.5-flash',
+        model: 'gemini-1.5-flash',
         systemInstruction: contextPrompt
     });
 } catch (error) {
@@ -25,7 +25,7 @@ try {
  * @returns {Promise<Array>} - Promise that resolves to a list of categories for each topic
  */
 function classifyText(topics) {
-    return new Promise((resolve) => {
+    return new Promise(async (resolve) => {
         if(!key || !model || !genAI) {
             console.warn("Model not loaded");
             return resolve(topics.map(() => 'none'));
@@ -34,7 +34,7 @@ function classifyText(topics) {
             prompt: topics
         }
 
-        model.generateContent(JSON.stringify(data))
+        await model.generateContent(JSON.stringify(data))
             .then(result => {
                 let categories = topics.map(() => 'none');
 

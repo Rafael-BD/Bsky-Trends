@@ -19,10 +19,16 @@ export async function getTrendingTopics(limit: number = 10, lang: string = 'pt',
             const topHashtags = getTopHashtags(hashtagLimit, lang as 'pt' | 'en');
             const topGlobalWords = getTopGlobalWords(globalWordLimit * 2, lang as 'pt' | 'en');
 
-            // Check if all arrays are not empty
-            if (topWords.length >= minCount || topPhrases.length >= minCount || topHashtags.length >= minCount || topGlobalWords.length >= minCount) {
+            // Check if some item count is greater than minCount
+            if (
+                topWords.every(word => word.count > minCount) ||
+                topPhrases.every(phrase => phrase.count > minCount) ||
+                topHashtags.every(hashtag => hashtag.count > minCount) ||
+                topGlobalWords.every(word => word.count > minCount)
+            ) {
                 return { topWords, topPhrases, topHashtags, topGlobalWords };
             }
+            
 
             console.log(`Attempt ${attempt + 1} failed. Retrying in ${delay / 1000} seconds...`);
             await wait(delay);

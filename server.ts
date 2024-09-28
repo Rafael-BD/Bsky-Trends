@@ -13,7 +13,7 @@ app.get('/trending', async (req, res) => {
     const limit = req.query.limit as string;
     const lang = req.query.lang as string;
     const minCount = req.query.minCount as string;
-    const trends = await getTrendingTopics(parseInt(limit ?? '15'), lang ?? 'pt', parseInt(minCount ?? '5'));
+    const trends = await getTrendingTopics(parseInt(limit ?? '10'), lang ?? 'pt', parseInt(minCount ?? '5'));
     res.json(trends);
 });
 
