@@ -1,5 +1,5 @@
 import { getTopWords, getTopPhrases, getTopGlobalWords, getTopHashtags } from "../trends/ngrams.ts";
-import { classifyText } from "../trends/classifier.js";
+import { classifyText } from "../services/classifier.js";
 import { saveTrend } from "../services/saveTrends.ts";
 
 export async function getTrendingTopics(limit: number = 10, lang: string = 'pt', minCount: number = 5) {
