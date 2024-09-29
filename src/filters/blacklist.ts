@@ -74,7 +74,7 @@ const blacklist = new Set([
     "xerecaawards", "pintosawards", "xerecasawards", "bucetaawards", "bucetasawards", "peito*", "pinto*", "pica*",
     "peitoawards", "*nuds*", "*pack*", "raba*", "*porn*", "*f+ck*", "*sex", "incel", "gore", "nsfw", "*broderagem*", "*brotheragem*",
     "*nud*", "*novinha*", "*novinho*", "vou me matar", "pauduro", "tesao", "pelado", "horny", "hardcock", "fetiche", "tactefilia",
-    "hentai", "anal", "femboy", "cum"
+    "hentai", "anal", "femboy", "cum", "goza*", "vazados","incest*"
 ]);
 
 

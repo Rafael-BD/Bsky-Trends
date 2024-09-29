@@ -22,6 +22,9 @@ async function createWebSocketClient(): Promise<void> {
         console.log("Listening to posts from Bsky network...");
         try {
             const client = subscribeRepos(`wss://bsky.network`, { decodeRepoOps: true });
+            let postCount = 0;
+            let startTime = Date.now();
+
             client.on('message', (m: SubscribeReposMessage) => {
                 if (ComAtprotoSyncSubscribeRepos.isCommit(m)) {
                     m.ops.forEach((op) => {
@@ -51,7 +54,15 @@ async function createWebSocketClient(): Promise<void> {
                         const words = filterWords(extractWords(processedText), lang);
                         const hashtags = filterWords(extractHashtags(processedText), lang);
                         updateSketches({ words, phrases, hashtags }, date, lang as 'pt' | 'en');
-                
+
+                        postCount++;
+                        const elapsedTime = (Date.now() - startTime) / 1000;
+                        if (elapsedTime >= 120) { 
+                            const postsPerSecond = postCount / elapsedTime;
+                            console.log(`Processing speed: ${postsPerSecond.toFixed(2)} posts/second`);
+                            postCount = 0;
+                            startTime = Date.now();
+                        }
                     });
                 }
             });

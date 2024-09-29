@@ -1,62 +1,89 @@
 import { supabaseSvc as supabase } from "../config/supabase.ts";
 import { compress, uncompress } from "lz4-napi";
 import { updateTrends } from "../services/updateTrendsDB.ts";
-// const isDev = Deno.env.get('DEV') === 'true';
+import 'dotenv/config';
+
+const isDev = process.env.DEV === 'true';
+const STORAGE = isDev ? 'checkpoints_dev' : 'checkpoints';
 
 class CountMinSketch {
     private depth: number;
     private width: number;
     private table: number[][];
     private hashFunctions: Array<(str: string) => number>;
-    private ngramsCounter: Map<string, { original: string, count: number, dates: Date[] }>;
-    private maxDates: number;
+    private ngramsCounter: Map<string, { original: string, count: number, lastUpdated: Date, dates: Date[] }>;
     private maxAgeInHours: number;
     private similarityThreshold: number;
     private cleanInterval: number;
-    private cleanIntervalId: NodeJS.Timeout | null;
     private minCount: number;
+    private decayFactor: number;
+    private maxDates: number;
 
-    constructor(depth = 5, width = 1000, maxDates = 5, maxAgeInHours = 12, similarityThreshold = 0.8, cleanInterval = 1800000, minCount = 10) {  
+    constructor(depth = 10, width = 10000, maxAgeInHours = 6, similarityThreshold = 0.8, cleanInterval = 1000 * 60 * 10, minCount = 50, decayFactor = 0.95, maxDates = 10) {
         this.depth = depth;
         this.width = width;
         this.table = Array.from({ length: depth }, () => Array(width).fill(0));
         this.hashFunctions = this.generateHashFunctions(depth, width);
-        this.ngramsCounter = new Map(); // To store the actual counts of n-grams
-        this.maxDates = maxDates; // Maximum number of dates to be stored
-        this.maxAgeInHours = maxAgeInHours; // Maximum age in hours to keep entries
-        this.similarityThreshold = similarityThreshold; // Similarity threshold to group similar words/phrases
-        this.cleanInterval = cleanInterval; // Interval to clean old entries
-        this.cleanIntervalId = null;
-        this.minCount = minCount; // Minimum count to keep entries
+        this.ngramsCounter = new Map();
+        this.maxAgeInHours = maxAgeInHours;
+        this.similarityThreshold = similarityThreshold;
+        this.cleanInterval = cleanInterval;
+        this.minCount = minCount;
+        this.decayFactor = decayFactor;
+        this.maxDates = maxDates;
         this.startPeriodicCleaning();
     }
 
     toJSON() {
         return {
-            depth: this.depth,
-            width: this.width,
             table: this.table,
-            ngramsCounter: Array.from(this.ngramsCounter.entries()),
-            maxDates: this.maxDates,
-            maxAgeInHours: this.maxAgeInHours,
-            similarityThreshold: this.similarityThreshold,
-            cleanInterval: this.cleanInterval,
-            minCount: this.minCount,
+            ngramsCounter: Array.from(this.ngramsCounter.entries())
         };
     }
 
-    static fromJSON(data: { depth: number, width: number, table: number[][], ngramsCounter: [string, { original: string, count: number, dates: string[] }][], maxDates: number, maxAgeInHours: number, similarityThreshold: number, cleanInterval: number, minCount: number }) {
-        const sketch = new CountMinSketch(
-            data.depth,
-            data.width,
-            data.maxDates,
-            data.maxAgeInHours,
-            data.similarityThreshold,
-            data.cleanInterval,
-            data.minCount
+    static fromJSON(
+        data: { table: number[][], ngramsCounter: [string, { original: string, count: number, dates: string[], lastUpdated?: string }][] }
+    ) {
+        const sketch = new CountMinSketch();
+
+        // Check if the dimensions of the table are different from the current sketch dimensions
+        if (data.table.length !== sketch.depth || data.table[0].length !== sketch.width) {
+            const newTable = Array.from({ length: sketch.depth }, () => Array(sketch.width).fill(0));
+
+            // Map the values from the old table to the new table
+            for (let i = 0; i < data.table.length; i++) {
+                if (!data.table[i]) continue; 
+                for (let j = 0; j < data.table[i].length; j++) {
+                    const value = data.table[i][j];
+
+                    const newI = Math.floor(i * (sketch.depth / data.table.length));
+                    const newJ = Math.floor(j * (sketch.width / data.table[i].length));
+
+                    newTable[newI][newJ] += value;
+                }
+            }
+
+            sketch.table = newTable;
+        } else {
+            sketch.table = data.table;
+        }
+
+        // Map the values from the old ngramsCounter to the new ngramsCounter
+        sketch.ngramsCounter = new Map(
+            data.ngramsCounter.map(([key, value]) => {
+                let lastUpdated: Date;
+
+                if (!value.lastUpdated) {
+                    lastUpdated = value.dates.length > 0 ? new Date(value.dates[value.dates.length - 1]) : new Date();
+                }
+                else {
+                    lastUpdated = new Date(value.lastUpdated);
+                }
+
+                return [key, { original: value.original, count: value.count, lastUpdated, dates: value.dates.map(dateStr => new Date(dateStr)) }];
+            })
         );
-        sketch.table = data.table;
-        sketch.ngramsCounter = new Map(data.ngramsCounter.map(([key, value]) => [key, { ...value, dates: value.dates.map(dateStr => new Date(dateStr)) }]));
+
         return sketch;
     }
 
@@ -68,7 +95,7 @@ class CountMinSketch {
         const data = JSON.stringify(this.toJSON());
         const compressedData = compress(Buffer.from(new TextEncoder().encode(data)));
         const { error } = await supabase.storage
-            .from("checkpoints")
+            .from(STORAGE)
             .upload(`${lang}_${type}_checkpoint.lz4`, new File([await compressedData], `${lang}_${type}_checkpoint.lz4`), {
                 upsert: true,
             });
@@ -88,7 +115,7 @@ class CountMinSketch {
         }
 
         const { data, error } = await supabase.storage
-            .from("checkpoints")
+            .from('checkpoints')
             .download(`${lang}_${type}_checkpoint.lz4`);
 
         if (error) {
@@ -144,9 +171,29 @@ class CountMinSketch {
         return (maxLen - this.levenshtein(a, b)) / maxLen;
     }
 
+    // Apply decay to the count of an entry based on the time between posts
+    private applyDecay(entry: { count: number, dates: Date[] }, now: Date) {
+        const dateDifferences = [];
+        
+        for (let i = 1; i < entry.dates.length; i++) {
+            const prev = entry.dates[i - 1].getTime();
+            const current = entry.dates[i].getTime();
+            dateDifferences.push((current - prev) / (1000 * 60 * 60)); 
+        }
+        
+        // Calculate the average time between posts
+        const averageDifference = dateDifferences.length > 0
+            ? dateDifferences.reduce((acc, diff) => acc + diff, 0) / dateDifferences.length
+            : 0;
+        
+        const timeSinceLast = (now.getTime() - entry.dates[entry.dates.length - 1].getTime()) / (1000 * 60 * 60);
+        const decay = Math.pow(this.decayFactor, averageDifference + timeSinceLast);
+
+        entry.count = Math.floor(entry.count * decay); // Apply decay to the count
+    }
+
     update(item: string, date: Date, _lang: string) {
         const lowerCaseItem = item.toLowerCase();
-        // console.log('Updating:', lowerCaseItem);
         let similarKey = lowerCaseItem;
         for (const key of this.ngramsCounter.keys()) {
             if (this.similarity(lowerCaseItem, key) >= this.similarityThreshold) {
@@ -159,15 +206,20 @@ class CountMinSketch {
             const index = this.hashFunctions[i](similarKey);
             this.table[i][index]++;
         }
+
         const entry = this.ngramsCounter.get(similarKey);
+        // console.log('Updating:', similarKey, entry?.count ?? 0);
+
         if (entry) {
+            this.applyDecay(entry, date);
             entry.count++;
+            entry.lastUpdated = date;
             entry.dates.push(date);
             if (entry.dates.length > this.maxDates) {
-                entry.dates.shift(); // Remove the oldest date if the maximum number of dates is reached
+                entry.dates.shift();
             }
         } else {
-            this.ngramsCounter.set(similarKey, { original: item, count: 1, dates: [date] });
+            this.ngramsCounter.set(similarKey, { original: item, count: 1, lastUpdated: date, dates: [date] });
         }
     }
 
@@ -176,8 +228,20 @@ class CountMinSketch {
         const now = new Date();
         return Array.from(this.ngramsCounter.entries())
             .map(([_key, value]) => {
-                const ageInHours = value.dates.reduce((sum, date) => sum + (now.getTime() - date.getTime()) / (1000 * 60 * 60), 0) / value.dates.length;
-                const weight = value.count / (1 + ageInHours); // Weight decreases with age (older entries have less weight)
+                const dateDifferences = [];
+                for (let i = 1; i < value.dates.length; i++) {
+                    const prev = value.dates[i - 1].getTime();
+                    const current = value.dates[i].getTime();
+                    dateDifferences.push((current - prev) / (1000 * 60 * 60));
+                }
+
+                const averageDifference = dateDifferences.length > 0
+                    ? dateDifferences.reduce((acc, diff) => acc + diff, 0) / dateDifferences.length
+                    : 0;
+
+                const timeSinceLast = (now.getTime() - value.dates[value.dates.length - 1].getTime()) / (1000 * 60 * 60);
+                const weight = value.count * Math.pow(this.decayFactor, averageDifference + timeSinceLast); // Weight decreases with age and frequency
+
                 return { item: value.original, count: value.count, weight };
             })
             .sort((a, b) => b.weight - a.weight)
@@ -188,23 +252,21 @@ class CountMinSketch {
     // Clean old entries from the n-grams counter (entries with count < minCount and older than maxAgeInHours)
     private cleanOldEntries() {
         const now = new Date();
+        let deletedEntries = 0; 
         for (const [key, value] of this.ngramsCounter.entries()) {
-            value.dates = value.dates.filter(date => (now.getTime() - date.getTime()) / (1000 * 60 * 60) <= this.maxAgeInHours);
-            if (value.dates.length === 0 || value.count < this.minCount) {
+            const ageInHours = (now.getTime() - value.lastUpdated.getTime()) / (1000 * 60 * 60);
+
+            if (ageInHours > this.maxAgeInHours || value.count < this.minCount) {
+                // console.log('Deleting due to age or low count:', key, value.lastUpdated, value.count);
                 this.ngramsCounter.delete(key);
+                deletedEntries++;
             }
         }
+        console.log('Deleted', deletedEntries, 'entries');
     }
 
     private startPeriodicCleaning() {
-        this.cleanIntervalId = setInterval(() => this.cleanOldEntries(), this.cleanInterval) as unknown as NodeJS.Timeout;
-    }
-
-    stopPeriodicCleaning() {
-        if (this.cleanIntervalId) {
-            clearInterval(this.cleanIntervalId);
-            this.cleanIntervalId = null;
-        }
+        setInterval(() => this.cleanOldEntries(), this.cleanInterval) as unknown as NodeJS.Timeout;
     }
 }
 
