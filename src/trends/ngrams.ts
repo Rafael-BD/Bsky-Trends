@@ -19,7 +19,7 @@ class CountMinSketch {
     private decayFactor: number;
     private maxDates: number;
 
-    constructor(depth = 10, width = 10000, maxAgeInHours = 6, similarityThreshold = 0.8, cleanInterval = 1000 * 60 * 10, minCount = 50, decayFactor = 0.95, maxDates = 10) {
+    constructor(depth = 10, width = 10000, maxAgeInHours = 6, similarityThreshold = 0.8, cleanInterval = 1000 * 60 * 20, minCount = 20, decayFactor = 0.95, maxDates = 10) {
         this.depth = depth;
         this.width = width;
         this.table = Array.from({ length: depth }, () => Array(width).fill(0));
@@ -262,6 +262,7 @@ class CountMinSketch {
                 deletedEntries++;
             }
         }
+        console.log("Num entries before cleaning:", this.ngramsCounter.size);
         console.log('Deleted', deletedEntries, 'entries');
     }
 
