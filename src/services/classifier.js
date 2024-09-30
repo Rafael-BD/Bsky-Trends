@@ -3,7 +3,7 @@ import contextPrompt from '../assets/contextPrompt.js';
 import 'dotenv/config';
 
 const key = process.env.GOOGLE_API_KEY;
-const allowedCategories = ["science", "music", "politics", "entertainment", "sports", "technology", "health", "none", "lgbt", "economy", "education", "environment", "food", "lifestyle", "religion", "social", "travel"];
+const allowedCategories = ["science", "music", "politics", "entertainment", "sports", "technology", "health", "none", "economy", "food", "lifestyle", "TV", "movies", "games", "books", "celebrities", "art", "geek"];
 
 
 let genAI = null;

@@ -14,7 +14,7 @@ export default `
 
 - The only possible categories are:
 {
-    "categories": ["science", "music", "politics", "entertainment", "sports", "technology", "health", "none", "lgbt", "economy", "education", "environment", "food", "lifestyle", "religion", "social", "travel"]
+    "categories": ["science", "music", "politics", "entertainment", "sports", "technology", "health", "none", "economy", "food", "lifestyle", "TV", "movies", "games", "books", "celebrities", "art", "geek]
 }
 
 - If you cannot classify, return "none"
