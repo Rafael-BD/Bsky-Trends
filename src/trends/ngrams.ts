@@ -11,15 +11,18 @@ class CountMinSketch {
     private width: number;
     private table: number[][];
     private hashFunctions: Array<(str: string) => number>;
-    private ngramsCounter: Map<string, { original: string, count: number, lastUpdated: Date, dates: Date[] }>;
+    private ngramsCounter: Map<string, { original: string, count: number, lastUpdated: Date, dates: Date[], ageWeight: number }>;
     private maxAgeInHours: number;
     private similarityThreshold: number;
     private cleanInterval: number;
     private minCount: number;
     private decayFactor: number;
     private maxDates: number;
+    private ageDecayFactor: number;
+    private ageWeightResetThreshold: number;
 
-    constructor(depth = 10, width = 10000, maxAgeInHours = 6, similarityThreshold = 0.8, cleanInterval = 1000 * 60 * 20, minCount = 20, decayFactor = 0.95, maxDates = 10) {
+    constructor(depth = 10, width = 10000, maxAgeInHours = 6, similarityThreshold = 0.8, cleanInterval = 1000 * 60 * 20, minCount = 20, decayFactor = 0.97, maxDates = 10, 
+                ageDecayFactor = Math.pow(0.95, 1 / (24 * 60 / 20)), ageWeightResetThreshold = 0.6) {
         this.depth = depth;
         this.width = width;
         this.table = Array.from({ length: depth }, () => Array(width).fill(0));
@@ -31,6 +34,8 @@ class CountMinSketch {
         this.minCount = minCount;
         this.decayFactor = decayFactor;
         this.maxDates = maxDates;
+        this.ageDecayFactor = ageDecayFactor;
+        this.ageWeightResetThreshold = ageWeightResetThreshold;
         this.startPeriodicCleaning();
     }
 
@@ -42,15 +47,13 @@ class CountMinSketch {
     }
 
     static fromJSON(
-        data: { table: number[][], ngramsCounter: [string, { original: string, count: number, dates: string[], lastUpdated?: string }][] }
+        data: { table: number[][], ngramsCounter: [string, { original: string, count: number, dates: string[], lastUpdated?: string, ageWeight?: number }][] }
     ) {
         const sketch = new CountMinSketch();
 
-        // Check if the dimensions of the table are different from the current sketch dimensions
         if (data.table.length !== sketch.depth || data.table[0].length !== sketch.width) {
             const newTable = Array.from({ length: sketch.depth }, () => Array(sketch.width).fill(0));
 
-            // Map the values from the old table to the new table
             for (let i = 0; i < data.table.length; i++) {
                 if (!data.table[i]) continue; 
                 for (let j = 0; j < data.table[i].length; j++) {
@@ -68,7 +71,6 @@ class CountMinSketch {
             sketch.table = data.table;
         }
 
-        // Map the values from the old ngramsCounter to the new ngramsCounter
         sketch.ngramsCounter = new Map(
             data.ngramsCounter.map(([key, value]) => {
                 let lastUpdated: Date;
@@ -80,7 +82,9 @@ class CountMinSketch {
                     lastUpdated = new Date(value.lastUpdated);
                 }
 
-                return [key, { original: value.original, count: value.count, lastUpdated, dates: value.dates.map(dateStr => new Date(dateStr)) }];
+                const ageWeight = value.ageWeight ?? 1; // Default to 1 if ageWeight is not present
+
+                return [key, { original: value.original, count: value.count, lastUpdated, dates: value.dates.map(dateStr => new Date(dateStr)), ageWeight }];
             })
         );
 
@@ -130,7 +134,6 @@ class CountMinSketch {
         }
     }
 
-    // Generate hash functions to be used in the Count-Min Sketch algorithm
     private generateHashFunctions(depth: number, width: number): Array<(str: string) => number> {
         const hashFunctions = [];
         for (let i = 0; i < depth; i++) {
@@ -146,7 +149,6 @@ class CountMinSketch {
         return hashFunctions;
     }
 
-    // Algorithm to calculate the Levenshtein distance between two strings (used to calculate similarity)
     private levenshtein(a: string, b: string): number {
         const matrix = Array.from({ length: a.length + 1 }, () => Array(b.length + 1).fill(0));
         for (let i = 0; i <= a.length; i++) matrix[i][0] = i;
@@ -164,15 +166,13 @@ class CountMinSketch {
         return matrix[a.length][b.length];
     }
 
-    // Calculate the similarity between two strings for merging similar words/phrases
     private similarity(a: string, b: string): number {
         const maxLen = Math.max(a.length, b.length);
         if (maxLen === 0) return 1.0;
         return (maxLen - this.levenshtein(a, b)) / maxLen;
     }
 
-    // Apply decay to the count of an entry based on the time between posts
-    private applyDecay(entry: { count: number, dates: Date[] }, now: Date) {
+    private applyDecay(entry: { count: number, dates: Date[], ageWeight: number }, now: Date) {
         const dateDifferences = [];
         
         for (let i = 1; i < entry.dates.length; i++) {
@@ -181,15 +181,17 @@ class CountMinSketch {
             dateDifferences.push((current - prev) / (1000 * 60 * 60)); 
         }
         
-        // Calculate the average time between posts
         const averageDifference = dateDifferences.length > 0
             ? dateDifferences.reduce((acc, diff) => acc + diff, 0) / dateDifferences.length
             : 0;
         
-        const timeSinceLast = (now.getTime() - entry.dates[entry.dates.length - 1].getTime()) / (1000 * 60 * 60);
-        const decay = Math.pow(this.decayFactor, averageDifference + timeSinceLast);
+        const decay = Math.pow(this.decayFactor, averageDifference);
 
-        entry.count = Math.floor(entry.count * decay); // Apply decay to the count
+        entry.count = Math.floor(entry.count * decay);
+    }
+
+    private applyAgeDecay(entry: { ageWeight: number, count: number }) {
+        entry.ageWeight *= this.ageDecayFactor;
     }
 
     update(item: string, date: Date, _lang: string) {
@@ -208,25 +210,24 @@ class CountMinSketch {
         }
 
         const entry = this.ngramsCounter.get(similarKey);
-        // console.log('Updating:', similarKey, entry?.count ?? 0);
 
         if (entry) {
             this.applyDecay(entry, date);
             entry.count++;
             entry.lastUpdated = date;
-            entry.dates.push(date);
-            if (entry.dates.length > this.maxDates) {
-                entry.dates.shift();
+            if (date > entry.dates[entry.dates.length - 1]) {
+                entry.dates.push(date);
+                if (entry.dates.length > this.maxDates) {
+                    entry.dates.shift();
+                }
             }
         } else {
-            this.ngramsCounter.set(similarKey, { original: item, count: 1, lastUpdated: date, dates: [date] });
+            this.ngramsCounter.set(similarKey, { original: item, count: 1, lastUpdated: date, dates: [date], ageWeight: 1 });
         }
     }
 
-    // Get the top N n-grams (top words, phrases, hashtags, etc.)
     getTopNgrams(n = 10): Array<{ item: string, count: number }> {
-        const now = new Date();
-        return Array.from(this.ngramsCounter.entries())
+        const entries = Array.from(this.ngramsCounter.entries())
             .map(([_key, value]) => {
                 const dateDifferences = [];
                 for (let i = 1; i < value.dates.length; i++) {
@@ -234,41 +235,58 @@ class CountMinSketch {
                     const current = value.dates[i].getTime();
                     dateDifferences.push((current - prev) / (1000 * 60 * 60));
                 }
-
+    
                 const averageDifference = dateDifferences.length > 0
                     ? dateDifferences.reduce((acc, diff) => acc + diff, 0) / dateDifferences.length
                     : 0;
-
-                const timeSinceLast = (now.getTime() - value.dates[value.dates.length - 1].getTime()) / (1000 * 60 * 60);
-                const weight = value.count * Math.pow(this.decayFactor, averageDifference + timeSinceLast); // Weight decreases with age and frequency
-
-                return { item: value.original, count: value.count, weight };
-            })
+    
+                const weight = value.count * Math.pow(this.decayFactor, averageDifference) * value.ageWeight;
+    
+                this.applyAgeDecay(value);
+    
+                return { key: _key, item: value.original, count: value.count, weight, ageWeight: value.ageWeight };
+            });
+    
+        const topEntries = entries
             .sort((a, b) => b.weight - a.weight)
             .slice(0, n)
             .map(entry => ({ item: entry.item, count: entry.count }));
+    
+        const topKeys = new Set(topEntries.map(entry => entry.item.toLowerCase()));
+    
+        // Reset entries not in the top N and with ageWeight below the threshold
+        entries.forEach(entry => {
+            if (!topKeys.has(entry.item.toLowerCase()) && entry.ageWeight < this.ageWeightResetThreshold) {
+                const ngramEntry = this.ngramsCounter.get(entry.key);
+                if (ngramEntry) {
+                    ngramEntry.count = 0;
+                    ngramEntry.ageWeight = 1;
+                }
+            }
+        });
+    
+        return topEntries;
     }
 
-    // Clean old entries from the n-grams counter (entries with count < minCount and older than maxAgeInHours)
     private cleanOldEntries() {
         const now = new Date();
         let deletedEntries = 0; 
+        console.log("Num entries before cleaning:", this.ngramsCounter.size);
         for (const [key, value] of this.ngramsCounter.entries()) {
             const ageInHours = (now.getTime() - value.lastUpdated.getTime()) / (1000 * 60 * 60);
 
             if (ageInHours > this.maxAgeInHours || value.count < this.minCount) {
-                // console.log('Deleting due to age or low count:', key, value.lastUpdated, value.count);
                 this.ngramsCounter.delete(key);
                 deletedEntries++;
             }
         }
-        console.log("Num entries before cleaning:", this.ngramsCounter.size);
         console.log('Deleted', deletedEntries, 'entries');
     }
 
     private startPeriodicCleaning() {
         setInterval(() => this.cleanOldEntries(), this.cleanInterval) as unknown as NodeJS.Timeout;
     }
+
 }
 
 const sketchesByLang = {
@@ -283,7 +301,6 @@ const sketchesByLang = {
         hashtagsSketch: await CountMinSketch.loadFromSupabase("en", "hashtagsSketch") || new CountMinSketch(),
     },
 };
-
 
 function updateSketches(ngrams: { words: string[], phrases: string[], hashtags: string[] }, date: Date, lang: 'pt' | 'en') {
     const filterNgrams = (ngrams: string[]) => ngrams.filter(ngram => ngram.trim().length > 1);
@@ -320,7 +337,6 @@ function getTopHashtags(n = 10, lang: 'pt' | 'en') {
     return sketchesByLang[lang].hashtagsSketch.getTopNgrams(n);
 }
 
-// Get the top global words (words that are trending in the other languages)
 function getTopGlobalWords(n = 10, langToExclude: 'pt' | 'en') {
     const allWords = Object.entries(sketchesByLang)
         .filter(([key]) => key !== langToExclude)
@@ -331,7 +347,6 @@ function getTopGlobalWords(n = 10, langToExclude: 'pt' | 'en') {
         wordCounts.set(word.item, (wordCounts.get(word.item) || 0) + word.count);
     });
 
-    // Return the top global words sorted by count
     return Array.from(wordCounts.entries())
         .map(([item, count]) => ({ item, count }))
         .sort((a, b) => b.count - a.count)

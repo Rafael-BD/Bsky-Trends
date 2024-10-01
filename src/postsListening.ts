@@ -37,7 +37,7 @@ async function createWebSocketClient(): Promise<void> {
                         const currentDate = new Date();
                         const diff = currentDate.getTime() - postDate.getTime();
                         const diffInHours = diff / (1000 * 60 * 60); 
-                        if (diffInHours > 4) return; // Ignore posts older than 4 hours
+                        if (diffInHours > 6) return; // Ignore posts older than 6 hours
 
                         const lang = payload.langs[0];
                         if(lang !== 'pt' && lang !== 'en') return;
