@@ -6,20 +6,26 @@ import 'dotenv/config';
 const isDev = process.env.DEV === 'true';
 const STORAGE = isDev ? 'checkpoints_dev' : 'checkpoints';
 
+/**
+ * Class to represent a Count-Min Sketch data structure for counting ngrams (words, phrases, hashtags).
+ * 
+ * The Count-Min Sketch is a probabilistic data structure that allows counting the frequency of ngrams
+ * in a stream of data. It uses multiple hash functions to map the ngrams to a table of counters.
+ */
 class CountMinSketch {
-    private depth: number;
-    private width: number;
-    private table: number[][];
+    private depth: number; // Number of hash functions
+    private width: number; // Number of counters per hash function
+    private table: number[][]; // Table of counters
     private hashFunctions: Array<(str: string) => number>;
     private ngramsCounter: Map<string, { original: string, count: number, lastUpdated: Date, dates: Date[], ageWeight: number }>;
-    private maxAgeInHours: number;
+    private maxAgeInHours: number; // Maximum age in hours for an entry
     private similarityThreshold: number;
-    private cleanInterval: number;
-    private minCount: number;
-    private decayFactor: number;
-    private maxDates: number;
-    private ageDecayFactor: number;
-    private ageWeightResetThreshold: number;
+    private cleanInterval: number; // Interval in milliseconds to clean old entries
+    private minCount: number; 
+    private decayFactor: number; // Decay factor for the count of an entry
+    private maxDates: number; // Maximum number of dates to keep in an entry
+    private ageDecayFactor: number; // Decay factor for the age of an entry
+    private ageWeightResetThreshold: number; // Threshold to reset the age weight and count of an entry
 
     constructor(depth = 10, width = 10000, maxAgeInHours = 6, similarityThreshold = 0.8, cleanInterval = 1000 * 60 * 20, minCount = 20, decayFactor = 0.97, maxDates = 10, 
                 ageDecayFactor = Math.pow(0.95, 1 / (24 * 60 / 20)), ageWeightResetThreshold = 0.6) {
@@ -149,6 +155,7 @@ class CountMinSketch {
         return hashFunctions;
     }
 
+    // Levenshtein distance algorithm to calculate the similarity between two strings
     private levenshtein(a: string, b: string): number {
         const matrix = Array.from({ length: a.length + 1 }, () => Array(b.length + 1).fill(0));
         for (let i = 0; i <= a.length; i++) matrix[i][0] = i;
@@ -181,6 +188,7 @@ class CountMinSketch {
             dateDifferences.push((current - prev) / (1000 * 60 * 60)); 
         }
         
+        // Calculate the average difference between dates in hours
         const averageDifference = dateDifferences.length > 0
             ? dateDifferences.reduce((acc, diff) => acc + diff, 0) / dateDifferences.length
             : 0;
@@ -226,6 +234,7 @@ class CountMinSketch {
         }
     }
 
+    // Get the top N ngrams with the weight (count * decayFactor^averageDifference * ageWeight)
     getTopNgrams(n = 10): Array<{ item: string, count: number }> {
         const entries = Array.from(this.ngramsCounter.entries())
             .map(([_key, value]) => {
@@ -268,6 +277,7 @@ class CountMinSketch {
         return topEntries;
     }
 
+    // Clean old entries with age greater than maxAgeInHours
     private cleanOldEntries() {
         const now = new Date();
         let deletedEntries = 0; 
