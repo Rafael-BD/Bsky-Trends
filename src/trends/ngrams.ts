@@ -180,7 +180,7 @@ class CountMinSketch {
         return (maxLen - this.levenshtein(a, b)) / maxLen;
     }
 
-    private applyDecay(entry: { count: number, dates: Date[], ageWeight: number }, now: Date) {
+    private applyDecay(entry: { count: number, dates: Date[], ageWeight: number }) {
         const dateDifferences = [];
         
         for (let i = 1; i < entry.dates.length; i++) {
@@ -196,7 +196,7 @@ class CountMinSketch {
         
         const decay = Math.pow(this.decayFactor, averageDifference);
 
-        entry.count = Math.floor(entry.count * decay);
+        entry.count = Math.max(0, Math.round(entry.count * decay));
     }
 
     private applyAgeDecay(entry: { ageWeight: number, count: number }) {
@@ -221,7 +221,7 @@ class CountMinSketch {
         const entry = this.ngramsCounter.get(similarKey);
 
         if (entry) {
-            this.applyDecay(entry, date);
+            this.applyDecay(entry);
             entry.count++;
             entry.lastUpdated = date;
             if (date > entry.dates[entry.dates.length - 1]) {
@@ -250,7 +250,7 @@ class CountMinSketch {
                     ? dateDifferences.reduce((acc, diff) => acc + diff, 0) / dateDifferences.length
                     : 0;
     
-                const weight = value.count * Math.pow(this.decayFactor, averageDifference) * Math.pow(value.ageWeight, 2);
+                const weight = ((value.count * 1.3) / Math.pow(this.decayFactor, averageDifference)) * value.ageWeight;
     
                 return { key: _key, item: value.original, count: value.count, weight, ageWeight: value.ageWeight };
             });
