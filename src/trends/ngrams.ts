@@ -5,6 +5,7 @@ import 'dotenv/config';
 
 const isDev = process.env.DEV === 'true';
 const STORAGE = isDev ? 'checkpoints_dev' : 'checkpoints';
+const saveInterval = 20 * 60 * 1000; // 20 minutes
 
 /**
  * Class to represent a Count-Min Sketch data structure for counting ngrams (words, phrases, hashtags).
@@ -28,7 +29,7 @@ class CountMinSketch {
     private ageWeightResetThreshold: number; // Threshold to reset the age weight and count of an entry
 
     constructor(depth = 10, width = 10000, maxAgeInHours = 6, similarityThreshold = 0.8, cleanInterval = 1000 * 60 * 20, minCount = 20, decayFactor = 0.97, maxDates = 10, 
-                ageDecayFactor = Math.pow(0.95, 1 / (24 * 60 / 20)), ageWeightResetThreshold = 0.6) {
+                ageDecayFactor = Math.pow(0.97, 1 / (24 * 60 / 20)), ageWeightResetThreshold = 0.6) {
         this.depth = depth;
         this.width = width;
         this.table = Array.from({ length: depth }, () => Array(width).fill(0));
@@ -249,9 +250,7 @@ class CountMinSketch {
                     ? dateDifferences.reduce((acc, diff) => acc + diff, 0) / dateDifferences.length
                     : 0;
     
-                const weight = value.count * Math.pow(this.decayFactor, averageDifference) * value.ageWeight;
-    
-                this.applyAgeDecay(value);
+                const weight = value.count * Math.pow(this.decayFactor, averageDifference) * Math.pow(value.ageWeight, 2);
     
                 return { key: _key, item: value.original, count: value.count, weight, ageWeight: value.ageWeight };
             });
@@ -259,12 +258,16 @@ class CountMinSketch {
         const topEntries = entries
             .sort((a, b) => b.weight - a.weight)
             .slice(0, n)
-            .map(entry => ({ item: entry.item, count: entry.count }));
+            .map(entry => {
+                return { item: entry.item, count: entry.count };
+            });
     
         const topKeys = new Set(topEntries.map(entry => entry.item.toLowerCase()));
-    
-        // Reset entries not in the top N and with ageWeight below the threshold
+
         entries.forEach(entry => {
+            if(topKeys.has(entry.item.toLowerCase())) {
+                this.applyAgeDecay(entry);
+            }
             if (!topKeys.has(entry.item.toLowerCase()) && entry.ageWeight < this.ageWeightResetThreshold) {
                 const ngramEntry = this.ngramsCounter.get(entry.key);
                 if (ngramEntry) {
@@ -323,8 +326,6 @@ function updateSketches(ngrams: { words: string[], phrases: string[], hashtags: 
     filteredPhrases.forEach(ngram => sketchesByLang[lang].phraseSketch.update(ngram, date, lang));
     filteredHashtags.forEach(ngram => sketchesByLang[lang].hashtagsSketch.update(ngram, date, lang));
 }
-
-const saveInterval = 20 * 60 * 1000; // 20 minutes
 
 setInterval(async () => {
     for (const lang in sketchesByLang) {

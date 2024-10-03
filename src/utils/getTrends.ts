@@ -14,10 +14,10 @@ export async function getTrendingTopics(limit: number = 10, lang: string = 'pt',
     // Function to get top topics with retries
     async function getTopTopicsWithRetries(retries: number = 3, delay: number = 10000) {
         for (let attempt = 0; attempt < retries; attempt++) {
-            const topWords = getTopWords(wordLimit, lang as 'pt' | 'en');
+            const topWords = getTopWords(wordLimit * 2, lang as 'pt' | 'en');
             const topPhrases = getTopPhrases(phraseLimit, lang as 'pt' | 'en');
             const topHashtags = getTopHashtags(hashtagLimit, lang as 'pt' | 'en');
-            const topGlobalWords = getTopGlobalWords(globalWordLimit * 2, lang as 'pt' | 'en');
+            const topGlobalWords = getTopGlobalWords(globalWordLimit, lang as 'pt' | 'en');
 
             // Check if some item count is greater than minCount
             if (
@@ -40,17 +40,17 @@ export async function getTrendingTopics(limit: number = 10, lang: string = 'pt',
     // Get top topics with retries
     const { topWords, topPhrases, topHashtags, topGlobalWords } = await getTopTopicsWithRetries();
 
-    // Filter out topGlobalWords that are already in topWords
-    const filteredTopGlobalWords = topGlobalWords.filter(globalWord => 
-        !topWords.some(word => word.item.toLowerCase() === globalWord.item.toLowerCase())
-    ).slice(0, globalWordLimit);
+    // Filter out topWords that are already in topGlobalWords
+    const filteredTopWords = topWords.filter(word => 
+        !topGlobalWords.some(globalWord => globalWord.item.toLowerCase() === word.item.toLowerCase())
+    ).slice(0, wordLimit);
 
     // Combine all topics into one array
     const allTopics = [
-        ...topWords.map(word => ({ type: 'word', ...word })),
+        ...filteredTopWords.map(word => ({ type: 'word', ...word })),
         ...topPhrases.map(phrase => ({ type: 'phrase', ...phrase })),
         ...topHashtags.map(hashtag => ({ type: 'hashtag', ...hashtag })),
-        ...filteredTopGlobalWords.map(word => ({ type: 'globalWord', ...word }))
+        ...topGlobalWords.map(word => ({ type: 'globalWord', ...word }))
     ];
 
     // Filter topics with count greater than minCount 
