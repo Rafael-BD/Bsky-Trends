@@ -106,7 +106,7 @@ The project uses a pool of workers to process posts efficiently. The worker pool
 
 ## Public API
 
-The project also has a public API to get the trends. The API documentation is available at https://github.com/Rafael-BD/Bsky-Trends-API.
+The project also has a public API to get the trends. The API documentation is available at https://github.com/rafabd1/Bsky-Trends-API.
 
 ## Contribution
 
